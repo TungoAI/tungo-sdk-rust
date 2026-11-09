@@ -3,7 +3,7 @@
 use crate::crypto::sign_hook_payload;
 use crate::json::JsonValue;
 use std::collections::BTreeMap;
-use std::io::{BufRead, BufReader, Read, Write};
+use std::io::{BufRead, BufReader, Write};
 use std::net::TcpStream;
 use std::sync::{Arc, Mutex};
 use std::thread;
@@ -72,6 +72,12 @@ pub fn parse_api_error(status: u16, raw_body: &str, headers: &BTreeMap<String, S
     let mut request_id = None;
 
     if let Ok(val) = JsonValue::parse(raw_body) {
+        if let Some(r) = val.get("request_id").and_then(|v| v.as_str()) {
+            request_id = Some(r.to_string());
+        }
+        if let Some(h) = val.get("hint").and_then(|v| v.as_str()) {
+            hint = Some(h.to_string());
+        }
         let err_obj = val.get("error").unwrap_or(&val);
         if let Some(c) = err_obj.get("code").and_then(|v| v.as_str()) {
             code = c.to_string();
@@ -155,6 +161,81 @@ pub fn parse_sse(raw_stream: &str) -> Vec<SSEEvent> {
     }
     flush(&mut event_type, &mut data_lines, &mut out);
     out
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct ChatStreamAccumulated {
+    pub text: String,
+    pub dialog_id: String,
+    pub stop_reason: String,
+    pub cost_tiyn: i64,
+}
+
+/// Собирает вектор событий SSE в итоговый ответ ChatStreamAccumulated.
+pub fn accumulate_chat_stream(events: &[SSEEvent]) -> ChatStreamAccumulated {
+    let mut text = String::new();
+    let mut dialog_id = String::new();
+    let mut stop_reason = String::new();
+    let mut cost_tiyn = 0i64;
+    for ev in events {
+        match ev.event.as_str() {
+            "meta" => {
+                if let Some(d) = ev.data.get("dialog_id").and_then(|v| v.as_str()) {
+                    dialog_id = d.to_string();
+                }
+            }
+            "text" | "delta" | "message" => {
+                if let Some(d) = ev.data.get("delta").and_then(|v| v.as_str()) {
+                    text.push_str(d);
+                } else if let Some(t) = ev.data.get("text").and_then(|v| v.as_str()) {
+                    text.push_str(t);
+                } else if let Some(s) = ev.data.as_str() {
+                    text.push_str(s);
+                }
+            }
+            "done" => {
+                if let Some(d) = ev.data.get("dialog_id").and_then(|v| v.as_str()) {
+                    dialog_id = d.to_string();
+                }
+                if let Some(sr) = ev.data.get("stop_reason").and_then(|v| v.as_str()) {
+                    stop_reason = sr.to_string();
+                }
+                if let Some(ct) = ev.data.get("cost_tiyn").and_then(|v| v.as_i64()) {
+                    cost_tiyn = ct;
+                }
+                if text.is_empty() {
+                    if let Some(ans) = ev.data.get("answer").and_then(|v| v.as_str()) {
+                        text = ans.to_string();
+                    }
+                }
+            }
+            _ => {}
+        }
+    }
+    ChatStreamAccumulated {
+        text,
+        dialog_id,
+        stop_reason,
+        cost_tiyn,
+    }
+}
+
+/// Проверяет контрольную сумму 12-значного БИН или ИИН Республики Казахстан (модуль 11, два прохода).
+pub fn is_valid_bin_iin(value: &str) -> bool {
+    let bytes = value.as_bytes();
+    if bytes.len() != 12 || !bytes.iter().all(|b| b.is_ascii_digit()) {
+        return false;
+    }
+    let digits: Vec<u32> = bytes.iter().map(|b| (b - b'0') as u32).collect();
+    let w1: [u32; 11] = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11];
+    let sum1: u32 = (0..11).map(|i| digits[i] * w1[i]).sum();
+    let mut control = sum1 % 11;
+    if control == 10 {
+        let w2: [u32; 11] = [3, 4, 5, 6, 7, 8, 9, 10, 11, 1, 2];
+        let sum2: u32 = (0..11).map(|i| digits[i] * w2[i]).sum();
+        control = sum2 % 11;
+    }
+    control < 10 && control == digits[11]
 }
 
 /// Утилиты для работы с деньгами в тиынах (1 тенге = 100 тиын).
@@ -263,7 +344,7 @@ impl TungoClientBuilder {
         Self {
             api_key: std::env::var("TUNGO_API_KEY").ok(),
             base_url: std::env::var("TUNGO_BASE_URL")
-                .unwrap_or_else(|_| "https://api.tungo.ai".to_string()),
+                .unwrap_or_else(|_| "https://api.tungo.kz".to_string()),
             workspace_id: std::env::var("TUNGO_WORKSPACE_ID").ok(),
             company_id: std::env::var("TUNGO_COMPANY_ID").ok(),
             max_retries: 2,
@@ -351,6 +432,7 @@ impl TungoClient {
         body.insert("message", JsonValue::String(input.prompt));
         body.insert("stream", JsonValue::Bool(false));
         if let Some(cid) = input.conversation_id {
+            body.insert("dialog_id", JsonValue::String(cid.clone()));
             body.insert("conversation_id", JsonValue::String(cid));
         }
         let mut params = BTreeMap::new();
@@ -359,7 +441,8 @@ impl TungoClient {
         }
         let res = self.chat().create(&body, Some(&params))?;
         let conv_id = res
-            .get("conversation_id")
+            .get("dialog_id")
+            .or_else(|| res.get("conversation_id"))
             .and_then(|v| v.as_str())
             .unwrap_or_default()
             .to_string();
@@ -369,9 +452,10 @@ impl TungoClient {
             .and_then(|v| v.as_str())
             .unwrap_or_default()
             .to_string();
-        let reply = msg
-            .and_then(|m| m.get("text"))
+        let reply = res
+            .get("answer")
             .and_then(|v| v.as_str())
+            .or_else(|| msg.and_then(|m| m.get("text")).and_then(|v| v.as_str()))
             .unwrap_or_default()
             .to_string();
         Ok(AskOutput {
@@ -380,6 +464,94 @@ impl TungoClient {
             reply,
             raw: res,
         })
+    }
+
+    /// Дождаться завершения запуска сценария автоматизации (state в done / error / cancelled / skipped).
+    pub fn wait_for_run(&self, run_id: &str, opts: WaitOptions) -> Result<JsonValue, TungoError> {
+        let mut params = BTreeMap::new();
+        if let Some(co) = opts.company_id {
+            params.insert("co".to_string(), co);
+        }
+        let start = std::time::Instant::now();
+        let timeout = Duration::from_millis(if opts.timeout_ms > 0 { opts.timeout_ms } else { 60_000 });
+        let interval = Duration::from_millis(if opts.poll_interval_ms > 0 { opts.poll_interval_ms } else { 500 });
+        loop {
+            let run = self.automations().get_run(run_id, Some(&params))?;
+            if let Some(st) = run.get("state").and_then(|v| v.as_str()) {
+                if matches!(st, "done" | "error" | "cancelled" | "skipped") {
+                    return Ok(run);
+                }
+            }
+            if start.elapsed() >= timeout {
+                return Err(TungoError::local("превышено время ожидания завершения запуска"));
+            }
+            thread::sleep(interval);
+        }
+    }
+
+    /// Запустить сценарий автоматизации и дождаться его завершения.
+    pub fn run_scenario_and_wait(
+        &self,
+        scenario_id: &str,
+        body: &JsonValue,
+        opts: WaitOptions,
+    ) -> Result<JsonValue, TungoError> {
+        let mut params = BTreeMap::new();
+        if let Some(co) = opts.company_id.as_ref() {
+            params.insert("co".to_string(), co.clone());
+        }
+        let started = self.automations().run_scenario(scenario_id, body, Some(&params))?;
+        let run_id = started
+            .get("id")
+            .and_then(|v| v.as_str())
+            .ok_or_else(|| TungoError::local("в ответе run_scenario отсутствует id запуска"))?;
+        self.wait_for_run(run_id, opts)
+    }
+
+    /// Дождаться завершения задания пачки (running == false).
+    pub fn wait_for_batch(&self, batch_id: &str, opts: WaitOptions) -> Result<JsonValue, TungoError> {
+        let mut params = BTreeMap::new();
+        if let Some(co) = opts.company_id {
+            params.insert("co".to_string(), co);
+        }
+        let start = std::time::Instant::now();
+        let timeout = Duration::from_millis(if opts.timeout_ms > 0 { opts.timeout_ms } else { 60_000 });
+        let interval = Duration::from_millis(if opts.poll_interval_ms > 0 { opts.poll_interval_ms } else { 500 });
+        loop {
+            let job = self.batches().get(batch_id, Some(&params))?;
+            if !job.get("running").and_then(|v| v.as_bool()).unwrap_or(false) {
+                return Ok(job);
+            }
+            if start.elapsed() >= timeout {
+                return Err(TungoError::local("превышено время ожидания завершения пачки"));
+            }
+            thread::sleep(interval);
+        }
+    }
+
+    /// Загрузить банковскую выписку (1CClientBankExchange .txt или файл в байтах) на разбор в предложения.
+    pub fn upload_bank_statement(
+        &self,
+        file_name: &str,
+        content: &[u8],
+        is_plain_text: bool,
+        company_id: Option<&str>,
+    ) -> Result<JsonValue, TungoError> {
+        let mut body = JsonValue::empty_object();
+        body.insert("file_name", JsonValue::String(file_name.to_string()));
+        if is_plain_text {
+            body.insert(
+                "text",
+                JsonValue::String(String::from_utf8_lossy(content).to_string()),
+            );
+        } else {
+            body.insert("file", JsonValue::String(crate::crypto::base64_encode(content)));
+        }
+        let mut params = BTreeMap::new();
+        if let Some(co) = company_id {
+            params.insert("co".to_string(), co.to_string());
+        }
+        self.batches().create_bank_statement(&body, Some(&params))
     }
 
     /// Отправляет событие во входящий хук /hooks/{token} с автоматической HMAC-подписью X-Signature.
@@ -391,15 +563,15 @@ impl TungoClient {
         }
         self.do_json(RequestSpec {
             method: "POST".to_string(),
-            path: format!("/hooks/{}", token),
+            path: format!("/hooks/{}", url_encode(token)),
             query: BTreeMap::new(),
             headers,
             body: None,
             raw_body: Some(raw),
             auth: "hook".to_string(),
-            idempotent: false,
+            idempotent: true,
             idempotency_key: None,
-            retry_safe: false,
+            retry_safe: true,
             force_stream: false,
         })
     }
@@ -461,10 +633,67 @@ impl TungoClient {
         idem_key: Option<&str>,
         accept: &str,
     ) -> Result<String, TungoError> {
+        let mut full_path = spec.path.clone();
+        if !spec.query.is_empty() {
+            let qs: Vec<String> = spec
+                .query
+                .iter()
+                .map(|(k, v)| format!("{}={}", url_encode(k), url_encode(v)))
+                .collect();
+            full_path.push('?');
+            full_path.push_str(&qs.join("&"));
+        }
+
+        // Для HTTPS (например, https://api.tungo.kz) в zero-dependency окружении используем системный curl,
+        // а для HTTP (локальные тестовые стенды) — прямой TcpStream.
+        if self.base_url.starts_with("https://") {
+            let full_url = format!("{}{}", self.base_url, full_path);
+            let mut cmd = std::process::Command::new("curl");
+            cmd.arg("-sS")
+                .arg("-i")
+                .arg("-X")
+                .arg(&spec.method)
+                .arg("-H")
+                .arg(format!("Accept: {}", accept))
+                .arg("-H")
+                .arg("User-Agent: tungo-sdk-rust/0.1.0");
+            if spec.auth == "key" {
+                let key = self
+                    .api_key
+                    .as_deref()
+                    .filter(|s| !s.is_empty())
+                    .ok_or_else(|| TungoError {
+                        kind: TungoErrorKind::Auth,
+                        status: 401,
+                        code: "missing_api_key".to_string(),
+                        message: "API ключ не задан".to_string(),
+                        hint: None,
+                        request_id: None,
+                        retry_after: None,
+                    })?;
+                cmd.arg("-H").arg(format!("x-api-key: {}", key));
+                cmd.arg("-H").arg(format!("Authorization: Bearer {}", key));
+            }
+            if let Some(ik) = idem_key {
+                cmd.arg("-H").arg(format!("Idempotency-Key: {}", ik));
+            }
+            for (k, v) in &spec.headers {
+                cmd.arg("-H").arg(format!("{}: {}", k, v));
+            }
+            if let Some(b) = body_str {
+                cmd.arg("-H").arg("Content-Type: application/json");
+                cmd.arg("--data-raw").arg(b);
+            }
+            cmd.arg(&full_url);
+            let out = cmd.output().map_err(|e| TungoError::local(&e.to_string()))?;
+            let raw_resp = String::from_utf8_lossy(&out.stdout).to_string();
+            let mut reader = BufReader::new(raw_resp.as_bytes());
+            return self.read_http_response(&mut reader);
+        }
+
         let url_no_scheme = self
             .base_url
             .strip_prefix("http://")
-            .or_else(|| self.base_url.strip_prefix("https://"))
             .unwrap_or(&self.base_url);
         let host_port = url_no_scheme.split('/').next().unwrap_or("localhost:80");
         let addr = if host_port.contains(':') {
@@ -472,17 +701,6 @@ impl TungoClient {
         } else {
             format!("{}:80", host_port)
         };
-
-        let mut full_path = spec.path.clone();
-        if !spec.query.is_empty() {
-            let qs: Vec<String> = spec
-                .query
-                .iter()
-                .map(|(k, v)| format!("{}={}", k, v))
-                .collect();
-            full_path.push('?');
-            full_path.push_str(&qs.join("&"));
-        }
 
         let mut stream = TcpStream::connect(&addr).map_err(|e| TungoError::local(&e.to_string()))?;
         let _ = stream.set_read_timeout(Some(Duration::from_secs(30)));
@@ -525,6 +743,10 @@ impl TungoClient {
             .map_err(|e| TungoError::local(&e.to_string()))?;
 
         let mut reader = BufReader::new(stream);
+        self.read_http_response(&mut reader)
+    }
+
+    fn read_http_response<R: BufRead>(&self, reader: &mut R) -> Result<String, TungoError> {
         let mut status_line = String::new();
         reader
             .read_line(&mut status_line)
@@ -640,6 +862,19 @@ impl TungoClient {
         crate::resources::AutomationsResource { client: self }
     }
 
+}
+
+fn url_encode(input: &str) -> String {
+    let mut out = String::with_capacity(input.len());
+    for b in input.bytes() {
+        match b {
+            b'A'..=b'Z' | b'a'..=b'z' | b'0'..=b'9' | b'-' | b'_' | b'.' | b'~' => {
+                out.push(b as char);
+            }
+            _ => out.push_str(&format!("%{:02X}", b)),
+        }
+    }
+    out
 }
 
 fn gen_idempotency_key() -> String {

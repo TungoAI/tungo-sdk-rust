@@ -200,10 +200,16 @@ pub fn sign_hook_payload(raw_body: &str, secret: &str) -> String {
     format!("sha256={}", hex_encode(&mac))
 }
 
-/// Проверяет подпись входящего хука (sha256=<hex>).
+/// Проверяет подпись входящего хука (поддерживает как sha256=<hex>, так и <hex>).
 pub fn verify_hook_signature(raw_body: &str, signature: &str, secret: &str) -> bool {
-    let expected = sign_hook_payload(raw_body, secret);
-    constant_time_eq(expected.as_bytes(), signature.trim().as_bytes())
+    let trimmed = signature.trim();
+    if trimmed.is_empty() || secret.is_empty() {
+        return false;
+    }
+    let hex_sig = trimmed.strip_prefix("sha256=").unwrap_or(trimmed);
+    let mac = hmac_sha256(secret.as_bytes(), raw_body.as_bytes());
+    let expected = hex_encode(&mac);
+    constant_time_eq(expected.as_bytes(), hex_sig.to_ascii_lowercase().as_bytes())
 }
 
 /// Проверяет Svix-подпись исходящего вебхука организации (whsec_...) и разбирает конверт события.

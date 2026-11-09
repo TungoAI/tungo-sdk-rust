@@ -5,8 +5,9 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
 use std::thread;
 use tungo_sdk::{
-    parse_api_error, parse_sse, sign_hook_payload, verify_hook_signature, verify_webhook, AskInput,
-    JsonValue, TungoClient, TungoErrorKind, TungoMoney,
+    accumulate_chat_stream, is_valid_bin_iin, parse_api_error, parse_sse, sign_hook_payload,
+    verify_hook_signature, verify_webhook, AskInput, JsonValue, TungoClient, TungoErrorKind,
+    TungoMoney,
 };
 
 #[test]
@@ -31,15 +32,17 @@ fn test_conformance_vectors() {
     assert_eq!(env.company_id, "co_01h455vb4pex5vsknk084sn02q");
     assert!(verify_webhook(&(payload.to_string() + "x"), &headers, secret, Some(ts), 300).is_err());
 
-    // 2. Incoming Hook HMAC-SHA256
+    // 2. Incoming Hook HMAC-SHA256 (with and without prefix)
     let hook = v.get("incoming_hook").unwrap();
     let h_sec = hook.get("secret").unwrap().as_str().unwrap();
     let h_pay = hook.get("body").unwrap().as_str().unwrap();
     let h_sig = hook.get("prefixed_signature").unwrap().as_str().unwrap();
+    let h_hex = hook.get("hex_signature").unwrap().as_str().unwrap();
     assert_eq!(sign_hook_payload(h_pay, h_sec), h_sig);
     assert!(verify_hook_signature(h_pay, h_sig, h_sec));
+    assert!(verify_hook_signature(h_pay, h_hex, h_sec));
 
-    // 3. Money (Tiyn <-> Tenge + Format)
+    // 3. Money (Tiyn <-> Tenge + Format) & Kazakhstan BIN/IIN
     for m in v.get("money").unwrap().as_array().unwrap() {
         let tenge = m.get("tenge").unwrap().as_f64().unwrap();
         let tiyn = m.get("tiyn").unwrap().as_i64().unwrap();
@@ -48,12 +51,23 @@ fn test_conformance_vectors() {
         assert!((TungoMoney::to_tenge(tiyn) - tenge).abs() < 1e-9);
         assert_eq!(TungoMoney::format_tiyn(tiyn, "KZT"), fmt_kzt);
     }
+    for b in v.get("bin_iin").unwrap().as_array().unwrap() {
+        let val = b.get("value").unwrap().as_str().unwrap();
+        let valid = b.get("valid").unwrap().as_bool().unwrap();
+        assert_eq!(is_valid_bin_iin(val), valid, "BIN/IIN {}", val);
+    }
 
-    // 4. Structured Errors
+    // 4. Structured Errors + Hint
     for e in v.get("errors").unwrap().as_array().unwrap() {
         let status = e.get("status").unwrap().as_i64().unwrap() as u16;
         let body = e.get("body").unwrap().as_str().unwrap();
+        let exp_code = e.get("error_code").unwrap().as_str().unwrap();
+        let exp_hint = e.get("hint").unwrap().as_str().unwrap();
+        let exp_req_id = e.get("request_id").unwrap().as_str().unwrap();
         let parsed = parse_api_error(status, body, &BTreeMap::new());
+        assert_eq!(parsed.code, exp_code);
+        assert_eq!(parsed.hint.as_deref(), Some(exp_hint));
+        assert_eq!(parsed.request_id.as_deref(), Some(exp_req_id));
         if status == 429 {
             assert_eq!(parsed.kind, TungoErrorKind::RateLimit);
         }
@@ -62,7 +76,7 @@ fn test_conformance_vectors() {
         }
     }
 
-    // 5. SSE Parser
+    // 5. SSE Parser & AccumulateChatStream
     let sse = v.get("sse").unwrap();
     let events = parse_sse(sse.get("raw_stream").unwrap().as_str().unwrap());
     let expected = sse.get("events").unwrap().as_array().unwrap();
@@ -70,6 +84,10 @@ fn test_conformance_vectors() {
     for (i, exp) in expected.iter().enumerate() {
         assert_eq!(events[i].event, exp.get("event").unwrap().as_str().unwrap());
     }
+    let acc = accumulate_chat_stream(&events);
+    assert_eq!(acc.text, sse.get("expected_text").unwrap().as_str().unwrap());
+    assert_eq!(acc.dialog_id, "dlg_01");
+    assert_eq!(acc.cost_tiyn, 185);
 }
 
 #[test]
@@ -113,7 +131,7 @@ fn test_client_ask_retry_and_pagination() {
                     );
                     stream.write_all(resp.as_bytes()).unwrap();
                 } else {
-                    let body = r#"{"conversation_id":"conv_1","user_message_id":"msg_u1","assistant_message":{"id":"msg_a1","role":"assistant","text":"Сальдо: 45 000,00 ₸"}}"#;
+                    let body = r#"{"dialog_id":"conv_1","turn_no":1,"answer":"Сальдо: 45 000,00 ₸"}"#;
                     let resp = format!(
                         "HTTP/1.1 200 OK\r\nx-ratelimit-limit: 600\r\nx-ratelimit-remaining: 597\r\nx-ratelimit-reset: 1762167600\r\nContent-Length: {}\r\n\r\n{}",
                         body.len(),
@@ -148,6 +166,7 @@ fn test_client_ask_retry_and_pagination() {
         })
         .expect("ask succeeds after retry");
     assert_eq!(ans.reply, "Сальдо: 45 000,00 ₸");
+    assert_eq!(ans.conversation_id, "conv_1");
     assert_eq!(attempts.load(Ordering::SeqCst), 2);
     assert_eq!(client.last_rate_limit().unwrap().remaining, 597);
 
