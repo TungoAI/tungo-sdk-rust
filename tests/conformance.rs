@@ -12,7 +12,7 @@ use tungo_sdk::{
 
 #[test]
 fn test_conformance_vectors() {
-    let raw = std::fs::read_to_string("../tungo-sdkgen/conformance/vectors.json")
+    let raw = std::fs::read_to_string("conformance/vectors.json")
         .expect("read conformance/vectors.json");
     let v = JsonValue::parse(&raw).expect("parse vectors.json");
 

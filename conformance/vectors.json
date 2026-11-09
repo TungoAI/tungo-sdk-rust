@@ -1,0 +1,96 @@
+{
+  "webhook_verification": {
+    "secret": "whsec_MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=",
+    "msg_id": "msg_2xyzExample123",
+    "timestamp": 1793974568,
+    "body": "{\"id\":\"evt_01h455vb4pex5vsknk084sn02q\",\"type\":\"proposal.written\",\"created_at\":\"2026-11-09T15:00:00.000Z\",\"workspace_id\":\"ws_01h455vb4pex5vsknk084sn02q\",\"company_id\":\"co_01h455vb4pex5vsknk084sn02q\",\"data\":{\"proposal_id\":\"P-000042\",\"document_kind\":\"payment_order_outgoing\",\"amount_tiyn\":4500000,\"number\":\"00000000123\",\"date\":\"2026-11-09\"}}",
+    "valid_signature": "v1,QseAJ0qEpHlvPNYIIqO95CN5QTD+Xz50R1FhRqds9aw=",
+    "dual_signature": "v1,aW52YWxpZHNpZ25hdHVyZXZhbHVlMTIzNDU2Nzg5MDEy v1,QseAJ0qEpHlvPNYIIqO95CN5QTD+Xz50R1FhRqds9aw=",
+    "bad_signature": "v1,aW52YWxpZHNpZ25hdHVyZXZhbHVlMTIzNDU2Nzg5MDEy"
+  },
+  "incoming_hook": {
+    "secret": "hksec_test_secret_key_for_hmac_256",
+    "body": "{\"id\":\"order_1532\",\"amount_tiyn\":4500000,\"customer_bin\":\"123456789012\"}",
+    "hex_signature": "2d4fe42ff3341a55bc43dc9685d09f87cff81a04a51630a7270b4ee45749a638",
+    "prefixed_signature": "sha256=2d4fe42ff3341a55bc43dc9685d09f87cff81a04a51630a7270b4ee45749a638"
+  },
+  "money": [
+    {
+      "tenge": 0,
+      "tiyn": 0,
+      "formatted": "0,00 ₸"
+    },
+    {
+      "tenge": 120,
+      "tiyn": 12000,
+      "formatted": "120,00 ₸"
+    },
+    {
+      "tenge": 45000.5,
+      "tiyn": 4500050,
+      "formatted": "45 000,50 ₸"
+    }
+  ],
+  "bin_iin": [
+    {
+      "value": "000000000000",
+      "valid": true
+    },
+    {
+      "value": "990140000017",
+      "valid": true
+    },
+    {
+      "value": "991140000015",
+      "valid": true
+    },
+    {
+      "value": "990140000016",
+      "valid": false
+    },
+    {
+      "value": "12345",
+      "valid": false
+    },
+    {
+      "value": "99014000001A",
+      "valid": false
+    }
+  ],
+  "errors": [
+    {
+      "status": 402,
+      "body": "{\"type\":\"error\",\"error\":{\"type\":\"payment_required_error\",\"code\":\"platform_balance_exhausted\",\"message\":\"Баланс платформы исчерпан — пополните счёт в кабинете.\",\"hint\":\"Откройте Настройки -\u003e Баланс платформы и пополните счёт.\"},\"request_id\":\"req_01jbalance001\"}",
+      "error_type": "payment_required_error",
+      "error_code": "platform_balance_exhausted",
+      "hint": "Откройте Настройки -\u003e Баланс платформы и пополните счёт.",
+      "request_id": "req_01jbalance001"
+    },
+    {
+      "status": 429,
+      "body": "{\"type\":\"error\",\"error\":{\"type\":\"limit_error\",\"code\":\"rate_limited\",\"message\":\"Слишком много запросов по этому ключу API — подождите немного\",\"hint\":\"Дождитесь сброса лимита по заголовку Retry-After.\"},\"request_id\":\"req_01jratelimit2\"}",
+      "error_type": "limit_error",
+      "error_code": "rate_limited",
+      "hint": "Дождитесь сброса лимита по заголовку Retry-After.",
+      "request_id": "req_01jratelimit2"
+    }
+  ],
+  "sse": {
+    "raw_stream": "event: text\ndata: {\"type\":\"text\",\"delta\":\"НДС составляет \"}\n\nevent: text\ndata: {\"type\":\"text\",\"delta\":\"5 400 ₸.\"}\n\nevent: done\ndata: {\"type\":\"done\",\"dialog_id\":\"dlg_01\",\"turn_no\":1,\"stop_reason\":\"end_turn\",\"cost_tiyn\":185}\n\n",
+    "expected_text": "НДС составляет 5 400 ₸.",
+    "events": [
+      {
+        "event": "text",
+        "data": "{\"type\":\"text\",\"delta\":\"НДС составляет \"}"
+      },
+      {
+        "event": "text",
+        "data": "{\"type\":\"text\",\"delta\":\"5 400 ₸.\"}"
+      },
+      {
+        "event": "done",
+        "data": "{\"type\":\"done\",\"dialog_id\":\"dlg_01\",\"turn_no\":1,\"stop_reason\":\"end_turn\",\"cost_tiyn\":185}"
+      }
+    ]
+  }
+}

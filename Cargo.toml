@@ -2,6 +2,12 @@
 name = "tungo-sdk"
 version = "0.1.0"
 edition = "2021"
-description = "Официальный Rust SDK для платформы ИИ-бухгалтерии Tungo AI (0 внешних зависимостей)"
+description = "Official Rust SDK for Tungo AI Platform API (1C AI Accountant, Automations, Webhooks, zero dependencies)"
+readme = "README.md"
 license = "MIT"
+homepage = "https://tungo.kz"
+documentation = "https://docs.rs/tungo-sdk"
 repository = "https://github.com/TungoAI/tungo-sdk-rust"
+keywords = ["tungo", "1c", "accounting", "sdk", "api"]
+categories = ["api-bindings", "web-programming::http-client"]
+include = ["src/**/*", "tests/**/*", "conformance/**/*", "Cargo.toml", "README.md", "LICENSE"]
