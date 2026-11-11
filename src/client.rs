@@ -1,886 +1,760 @@
-//! Клиент, иерархия ошибок, SSE-парсер, денежные хелперы и высокоуровневые методы для новичков.
+//! The client: configuration, transport, retries and timeouts.
 
-use crate::crypto::sign_hook_payload;
-use crate::json::JsonValue;
-use std::collections::BTreeMap;
-use std::io::{BufRead, BufReader, Write};
-use std::net::TcpStream;
-use std::sync::{Arc, Mutex};
-use std::thread;
-use std::time::{Duration, SystemTime, UNIX_EPOCH};
+use std::fmt;
+use std::future::Future;
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::Arc;
+use std::time::{Duration, SystemTime};
 
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum TungoErrorKind {
-    Validation,      // 400
-    Auth,            // 401
-    PaymentRequired, // 402
-    Permission,      // 403
-    NotFound,        // 404
-    Conflict,        // 409
-    RateLimit,       // 429
-    Server,          // 5xx
-    Local,           // клиентская/сетевая ошибка
+use reqwest::header::{HeaderMap, HeaderName, HeaderValue, ACCEPT, CONTENT_TYPE, USER_AGENT};
+use serde::de::DeserializeOwned;
+
+use crate::error::{ApiError, Error, Result};
+use crate::meta::{DEFAULT_BASE_URL, USER_AGENT as SDK_USER_AGENT};
+use crate::pagination::{CursorPage, ItemStream, Page};
+use crate::request::{
+    encode_path_segment, encode_query, parse_header, Auth, Request, RequestOptions,
+};
+use crate::response::{snippet, RawResponse, Response, ResponseMeta};
+use crate::retry::{self, FailureCause, RetryDecision};
+use crate::sse::EventStream;
+
+/// The default timeout of an ordinary call.
+pub const DEFAULT_TIMEOUT: Duration = Duration::from_secs(60);
+
+/// The default timeout of a non-streaming chat turn.
+pub const DEFAULT_LONG_TIMEOUT: Duration = Duration::from_secs(600);
+
+/// The default time allowed to establish a connection.
+pub const DEFAULT_CONNECT_TIMEOUT: Duration = Duration::from_secs(30);
+
+/// The default time a stream may stay silent.
+pub const DEFAULT_STREAM_IDLE_TIMEOUT: Duration = Duration::from_secs(120);
+
+const IDEMPOTENCY_KEY: HeaderName = HeaderName::from_static("idempotency-key");
+const API_KEY: HeaderName = HeaderName::from_static("x-api-key");
+
+/// The Tungo Platform API client.
+///
+/// A client is immutable, cheap to clone (clones share one connection pool)
+/// and safe to use from many tasks at once.
+///
+/// ```no_run
+/// use tungo_sdk::Tungo;
+///
+/// # async fn run() -> tungo_sdk::Result<()> {
+/// let client = Tungo::builder()
+///     .api_key("tg_...")
+///     .company_id("co_...")
+///     .build()?;
+/// let company = client.companies().get().await?;
+/// println!("{}", company.name);
+/// # Ok(())
+/// # }
+/// ```
+#[derive(Clone)]
+pub struct Tungo {
+    inner: Arc<Inner>,
+    options: RequestOptions,
+    /// Whether the idempotency key of `options` has been sent with a request
+    /// (see [`Tungo::with_options`]); shared by the clones of this client.
+    key_used: Arc<AtomicBool>,
 }
 
-#[derive(Debug, Clone, PartialEq)]
-pub struct TungoError {
-    pub kind: TungoErrorKind,
-    pub status: u16,
-    pub code: String,
-    pub message: String,
-    pub hint: Option<String>,
-    pub request_id: Option<String>,
-    pub retry_after: Option<f64>,
-}
-
-impl TungoError {
-    pub fn local(msg: &str) -> Self {
-        Self {
-            kind: TungoErrorKind::Local,
-            status: 0,
-            code: "local_error".to_string(),
-            message: msg.to_string(),
-            hint: None,
-            request_id: None,
-            retry_after: None,
-        }
-    }
-}
-
-impl std::fmt::Display for TungoError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "TungoError({} {}): {}", self.status, self.code, self.message)
-    }
-}
-
-impl std::error::Error for TungoError {}
-
-pub fn parse_api_error(status: u16, raw_body: &str, headers: &BTreeMap<String, String>) -> TungoError {
-    let kind = match status {
-        400 => TungoErrorKind::Validation,
-        401 => TungoErrorKind::Auth,
-        402 => TungoErrorKind::PaymentRequired,
-        403 => TungoErrorKind::Permission,
-        404 => TungoErrorKind::NotFound,
-        409 => TungoErrorKind::Conflict,
-        429 => TungoErrorKind::RateLimit,
-        _ => TungoErrorKind::Server,
-    };
-    let mut code = "api_error".to_string();
-    let mut message = raw_body.trim().to_string();
-    let mut hint = None;
-    let mut request_id = None;
-
-    if let Ok(val) = JsonValue::parse(raw_body) {
-        if let Some(r) = val.get("request_id").and_then(|v| v.as_str()) {
-            request_id = Some(r.to_string());
-        }
-        if let Some(h) = val.get("hint").and_then(|v| v.as_str()) {
-            hint = Some(h.to_string());
-        }
-        let err_obj = val.get("error").unwrap_or(&val);
-        if let Some(c) = err_obj.get("code").and_then(|v| v.as_str()) {
-            code = c.to_string();
-        }
-        if let Some(m) = err_obj.get("message").and_then(|v| v.as_str()) {
-            message = m.to_string();
-        }
-        if let Some(h) = err_obj.get("hint").and_then(|v| v.as_str()) {
-            hint = Some(h.to_string());
-        }
-        if let Some(r) = err_obj.get("request_id").and_then(|v| v.as_str()) {
-            request_id = Some(r.to_string());
-        }
-    }
-    let retry_after = headers
-        .iter()
-        .find(|(k, _)| k.eq_ignore_ascii_case("retry-after"))
-        .and_then(|(_, v)| v.parse::<f64>().ok());
-
-    TungoError {
-        kind,
-        status,
-        code,
-        message,
-        hint,
-        request_id,
-        retry_after,
-    }
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct RateLimitInfo {
-    pub limit: i64,
-    pub remaining: i64,
-    pub reset: i64,
-}
-
-#[derive(Debug, Clone, PartialEq)]
-pub struct SSEEvent {
-    pub event: String,
-    pub data: JsonValue,
-    pub raw: String,
-}
-
-/// Разбирает поток text/event-stream (SSE) в вектор событий SSEEvent.
-pub fn parse_sse(raw_stream: &str) -> Vec<SSEEvent> {
-    let mut out = Vec::new();
-    let mut event_type = String::new();
-    let mut data_lines: Vec<String> = Vec::new();
-
-    let flush = |ev: &mut String, lines: &mut Vec<String>, out: &mut Vec<SSEEvent>| {
-        if ev.is_empty() && lines.is_empty() {
-            return;
-        }
-        let raw = lines.join("\n");
-        let e_name = if ev.is_empty() { "message".to_string() } else { std::mem::take(ev) };
-        lines.clear();
-        let data = JsonValue::parse(&raw).unwrap_or_else(|_| JsonValue::String(raw.clone()));
-        out.push(SSEEvent {
-            event: e_name,
-            data,
-            raw,
-        });
-    };
-
-    for line in raw_stream.lines() {
-        let line = line.trim_end_matches('\r');
-        if line.is_empty() {
-            flush(&mut event_type, &mut data_lines, &mut out);
-            continue;
-        }
-        if line.starts_with(':') {
-            continue;
-        }
-        if let Some(rest) = line.strip_prefix("event:") {
-            event_type = rest.trim().to_string();
-        } else if let Some(rest) = line.strip_prefix("data:") {
-            let val = rest.strip_prefix(' ').unwrap_or(rest);
-            data_lines.push(val.to_string());
-        }
-    }
-    flush(&mut event_type, &mut data_lines, &mut out);
-    out
-}
-
-#[derive(Debug, Clone, PartialEq)]
-pub struct ChatStreamAccumulated {
-    pub text: String,
-    pub dialog_id: String,
-    pub stop_reason: String,
-    pub cost_tiyn: i64,
-}
-
-/// Собирает вектор событий SSE в итоговый ответ ChatStreamAccumulated.
-pub fn accumulate_chat_stream(events: &[SSEEvent]) -> ChatStreamAccumulated {
-    let mut text = String::new();
-    let mut dialog_id = String::new();
-    let mut stop_reason = String::new();
-    let mut cost_tiyn = 0i64;
-    for ev in events {
-        match ev.event.as_str() {
-            "meta" => {
-                if let Some(d) = ev.data.get("dialog_id").and_then(|v| v.as_str()) {
-                    dialog_id = d.to_string();
-                }
-            }
-            "text" | "delta" | "message" => {
-                if let Some(d) = ev.data.get("delta").and_then(|v| v.as_str()) {
-                    text.push_str(d);
-                } else if let Some(t) = ev.data.get("text").and_then(|v| v.as_str()) {
-                    text.push_str(t);
-                } else if let Some(s) = ev.data.as_str() {
-                    text.push_str(s);
-                }
-            }
-            "done" => {
-                if let Some(d) = ev.data.get("dialog_id").and_then(|v| v.as_str()) {
-                    dialog_id = d.to_string();
-                }
-                if let Some(sr) = ev.data.get("stop_reason").and_then(|v| v.as_str()) {
-                    stop_reason = sr.to_string();
-                }
-                if let Some(ct) = ev.data.get("cost_tiyn").and_then(|v| v.as_i64()) {
-                    cost_tiyn = ct;
-                }
-                if text.is_empty() {
-                    if let Some(ans) = ev.data.get("answer").and_then(|v| v.as_str()) {
-                        text = ans.to_string();
-                    }
-                }
-            }
-            _ => {}
-        }
-    }
-    ChatStreamAccumulated {
-        text,
-        dialog_id,
-        stop_reason,
-        cost_tiyn,
-    }
-}
-
-/// Проверяет контрольную сумму 12-значного БИН или ИИН Республики Казахстан (модуль 11, два прохода).
-pub fn is_valid_bin_iin(value: &str) -> bool {
-    let bytes = value.as_bytes();
-    if bytes.len() != 12 || !bytes.iter().all(|b| b.is_ascii_digit()) {
-        return false;
-    }
-    let digits: Vec<u32> = bytes.iter().map(|b| (b - b'0') as u32).collect();
-    let w1: [u32; 11] = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11];
-    let sum1: u32 = (0..11).map(|i| digits[i] * w1[i]).sum();
-    let mut control = sum1 % 11;
-    if control == 10 {
-        let w2: [u32; 11] = [3, 4, 5, 6, 7, 8, 9, 10, 11, 1, 2];
-        let sum2: u32 = (0..11).map(|i| digits[i] * w2[i]).sum();
-        control = sum2 % 11;
-    }
-    control < 10 && control == digits[11]
-}
-
-/// Утилиты для работы с деньгами в тиынах (1 тенге = 100 тиын).
-pub struct TungoMoney;
-
-impl TungoMoney {
-    pub fn to_tiyn(amount: f64) -> i64 {
-        (amount * 100.0).round() as i64
-    }
-
-    pub fn to_tenge(tiyn: i64) -> f64 {
-        (tiyn as f64) / 100.0
-    }
-
-    pub fn format_tiyn(tiyn: i64, currency: &str) -> String {
-        let symbol = match currency.trim().to_ascii_uppercase().as_str() {
-            "" | "KZT" => "₸",
-            "USD" => "$",
-            "EUR" => "€",
-            "RUB" => "₽",
-            other => return format!("{} {}", tiyn, other),
-        };
-        let neg = tiyn < 0;
-        let abs = tiyn.abs();
-        let whole = abs / 100;
-        let frac = abs % 100;
-        let whole_str = whole.to_string();
-        let mut groups = Vec::new();
-        let mut end = whole_str.len();
-        while end > 3 {
-            groups.push(&whole_str[end - 3..end]);
-            end -= 3;
-        }
-        groups.push(&whole_str[0..end]);
-        groups.reverse();
-        let sign = if neg { "-" } else { "" };
-        format!("{}{},{:02} {}", sign, groups.join(" "), frac, symbol)
-    }
-}
-
-#[derive(Debug, Clone, PartialEq)]
-pub struct WebhookEnvelope {
-    pub event: String,
-    pub timestamp: String,
-    pub company_id: String,
-    pub data: JsonValue,
-}
-
-#[derive(Debug, Clone)]
-pub struct RequestSpec {
-    pub method: String,
-    pub path: String,
-    pub query: BTreeMap<String, String>,
-    pub headers: BTreeMap<String, String>,
-    pub body: Option<JsonValue>,
-    pub raw_body: Option<String>,
-    pub auth: String,
-    pub idempotent: bool,
-    pub idempotency_key: Option<String>,
-    pub retry_safe: bool,
-    pub force_stream: bool,
-}
-
-#[derive(Debug, Clone)]
-pub struct AskInput {
-    pub prompt: String,
-    pub company_id: Option<String>,
-    pub conversation_id: Option<String>,
-}
-
-#[derive(Debug, Clone)]
-pub struct AskOutput {
-    pub conversation_id: String,
-    pub message_id: String,
-    pub reply: String,
-    pub raw: JsonValue,
-}
-
-#[derive(Debug, Clone)]
-pub struct WaitOptions {
-    pub company_id: Option<String>,
-    pub poll_interval_ms: u64,
-    pub timeout_ms: u64,
-}
-
-impl Default for WaitOptions {
-    fn default() -> Self {
-        Self {
-            company_id: None,
-            poll_interval_ms: 500,
-            timeout_ms: 60_000,
-        }
-    }
-}
-
-pub struct TungoClientBuilder {
+struct Inner {
+    http: reqwest::Client,
     api_key: Option<String>,
     base_url: String,
-    workspace_id: Option<String>,
+    webhook_secret: Option<String>,
     company_id: Option<String>,
-    max_retries: usize,
+    workspace_id: Option<String>,
+    timeout: Option<Duration>,
+    max_retries: u32,
+    default_headers: HeaderMap,
+    stream_idle_timeout: Duration,
 }
 
-impl TungoClientBuilder {
-    pub fn new() -> Self {
-        Self {
-            api_key: std::env::var("TUNGO_API_KEY").ok(),
-            base_url: std::env::var("TUNGO_BASE_URL")
-                .unwrap_or_else(|_| "https://api.tungo.kz".to_string()),
-            workspace_id: std::env::var("TUNGO_WORKSPACE_ID").ok(),
-            company_id: std::env::var("TUNGO_COMPANY_ID").ok(),
-            max_retries: 2,
-        }
-    }
-    pub fn api_key(mut self, v: impl Into<String>) -> Self {
-        self.api_key = Some(v.into());
-        self
-    }
-    pub fn base_url(mut self, v: impl Into<String>) -> Self {
-        self.base_url = v.into().trim_end_matches('/').to_string();
-        self
-    }
-    pub fn workspace_id(mut self, v: impl Into<String>) -> Self {
-        self.workspace_id = Some(v.into());
-        self
-    }
-    pub fn company_id(mut self, v: impl Into<String>) -> Self {
-        self.company_id = Some(v.into());
-        self
-    }
-    pub fn max_retries(mut self, n: usize) -> Self {
-        self.max_retries = n;
-        self
-    }
-    pub fn build(self) -> TungoClient {
-        TungoClient {
-            api_key: self.api_key,
-            base_url: self.base_url,
-            workspace_id: self.workspace_id,
-            company_id: self.company_id,
-            max_retries: self.max_retries,
-            last_rate_limit: Arc::new(Mutex::new(None)),
-        }
+impl fmt::Debug for Tungo {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let redacted = |secret: &Option<String>| secret.as_ref().map(|_| "[redacted]");
+        f.debug_struct("Tungo")
+            .field("base_url", &self.inner.base_url)
+            .field("api_key", &redacted(&self.inner.api_key))
+            .field("webhook_secret", &redacted(&self.inner.webhook_secret))
+            .field("company_id", &self.inner.company_id)
+            .field("workspace_id", &self.inner.workspace_id)
+            .field("timeout", &self.inner.timeout)
+            .field("max_retries", &self.inner.max_retries)
+            .finish_non_exhaustive()
     }
 }
 
-impl Default for TungoClientBuilder {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-pub struct TungoClient {
+/// Configures and builds a [`Tungo`] client.
+///
+/// The API key, the base URL and the webhook secret fall back to the
+/// environment variables `TUNGO_API_KEY`, `TUNGO_BASE_URL` and
+/// `TUNGO_WEBHOOK_SECRET` when they are not set explicitly.
+#[derive(Clone, Default)]
+#[must_use = "call `build()` to create the client"]
+pub struct TungoBuilder {
     api_key: Option<String>,
-    base_url: String,
-    workspace_id: Option<String>,
+    base_url: Option<String>,
+    webhook_secret: Option<String>,
     company_id: Option<String>,
-    max_retries: usize,
-    last_rate_limit: Arc<Mutex<Option<RateLimitInfo>>>,
+    workspace_id: Option<String>,
+    timeout: Option<Duration>,
+    connect_timeout: Option<Duration>,
+    stream_idle_timeout: Option<Duration>,
+    max_retries: Option<u32>,
+    default_headers: Vec<(String, String)>,
+    http_client: Option<reqwest::Client>,
+    /// Why the client of `http_client_builder` could not be created.
+    http_client_error: Option<String>,
+    ignore_env: bool,
 }
 
-impl TungoClient {
-    pub fn builder() -> TungoClientBuilder {
-        TungoClientBuilder::new()
+impl fmt::Debug for TungoBuilder {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("TungoBuilder")
+            .field("base_url", &self.base_url)
+            .field("api_key", &self.api_key.as_ref().map(|_| "[redacted]"))
+            .field("company_id", &self.company_id)
+            .field("workspace_id", &self.workspace_id)
+            .finish_non_exhaustive()
+    }
+}
+
+impl TungoBuilder {
+    /// Sets the API key (otherwise `TUNGO_API_KEY`).
+    pub fn api_key(mut self, api_key: impl Into<String>) -> Self {
+        self.api_key = Some(api_key.into());
+        self
     }
 
-    pub fn last_rate_limit(&self) -> Option<RateLimitInfo> {
-        self.last_rate_limit.lock().ok().and_then(|g| g.clone())
+    /// Sets the base URL (otherwise `TUNGO_BASE_URL`, then `https://api.tungo.kz`).
+    pub fn base_url(mut self, base_url: impl Into<String>) -> Self {
+        self.base_url = Some(base_url.into());
+        self
     }
 
-    pub(crate) fn resolve_company_id(&self, explicit: Option<&str>) -> Result<String, TungoError> {
-        if let Some(c) = explicit.filter(|s| !s.is_empty()) {
-            return Ok(c.to_string());
-        }
-        if let Some(c) = self.company_id.as_deref().filter(|s| !s.is_empty()) {
-            return Ok(c.to_string());
-        }
-        Err(TungoError::local("не указан company_id"))
+    /// Sets the secret used by [`Tungo::verify_webhook`] (otherwise `TUNGO_WEBHOOK_SECRET`).
+    pub fn webhook_secret(mut self, secret: impl Into<String>) -> Self {
+        self.webhook_secret = Some(secret.into());
+        self
     }
 
-    pub(crate) fn resolve_workspace_id(&self, explicit: Option<&str>) -> Result<String, TungoError> {
-        if let Some(w) = explicit.filter(|s| !s.is_empty()) {
-            return Ok(w.to_string());
-        }
-        if let Some(w) = self.workspace_id.as_deref().filter(|s| !s.is_empty()) {
-            return Ok(w.to_string());
-        }
-        Err(TungoError::local("не указан workspace_id"))
+    /// Sets the company that company-scoped calls address.
+    pub fn company_id(mut self, company_id: impl Into<String>) -> Self {
+        self.company_id = Some(company_id.into());
+        self
     }
 
-    /// Быстрый синхронный запрос к ИИ-бухгалтеру в одну строчку (stream = false).
-    pub fn ask(&self, input: AskInput) -> Result<AskOutput, TungoError> {
-        let mut body = JsonValue::empty_object();
-        body.insert("message", JsonValue::String(input.prompt));
-        body.insert("stream", JsonValue::Bool(false));
-        if let Some(cid) = input.conversation_id {
-            body.insert("dialog_id", JsonValue::String(cid.clone()));
-            body.insert("conversation_id", JsonValue::String(cid));
-        }
-        let mut params = BTreeMap::new();
-        if let Some(co) = input.company_id {
-            params.insert("co".to_string(), co);
-        }
-        let res = self.chat().create(&body, Some(&params))?;
-        let conv_id = res
-            .get("dialog_id")
-            .or_else(|| res.get("conversation_id"))
-            .and_then(|v| v.as_str())
-            .unwrap_or_default()
-            .to_string();
-        let msg = res.get("assistant_message");
-        let msg_id = msg
-            .and_then(|m| m.get("id"))
-            .and_then(|v| v.as_str())
-            .unwrap_or_default()
-            .to_string();
-        let reply = res
-            .get("answer")
-            .and_then(|v| v.as_str())
-            .or_else(|| msg.and_then(|m| m.get("text")).and_then(|v| v.as_str()))
-            .unwrap_or_default()
-            .to_string();
-        Ok(AskOutput {
-            conversation_id: conv_id,
-            message_id: msg_id,
-            reply,
-            raw: res,
-        })
+    /// Sets the workspace that workspace-scoped calls address.
+    pub fn workspace_id(mut self, workspace_id: impl Into<String>) -> Self {
+        self.workspace_id = Some(workspace_id.into());
+        self
     }
 
-    /// Дождаться завершения запуска сценария автоматизации (state в done / error / cancelled / skipped).
-    pub fn wait_for_run(&self, run_id: &str, opts: WaitOptions) -> Result<JsonValue, TungoError> {
-        let mut params = BTreeMap::new();
-        if let Some(co) = opts.company_id {
-            params.insert("co".to_string(), co);
-        }
-        let start = std::time::Instant::now();
-        let timeout = Duration::from_millis(if opts.timeout_ms > 0 { opts.timeout_ms } else { 60_000 });
-        let interval = Duration::from_millis(if opts.poll_interval_ms > 0 { opts.poll_interval_ms } else { 500 });
-        loop {
-            let run = self.automations().get_run(run_id, Some(&params))?;
-            if let Some(st) = run.get("state").and_then(|v| v.as_str()) {
-                if matches!(st, "done" | "error" | "cancelled" | "skipped") {
-                    return Ok(run);
-                }
+    /// Sets the total time allowed for one attempt of any call. Without it
+    /// the timeout is 60 s, and 600 s for non-streaming chat turns.
+    pub fn timeout(mut self, timeout: Duration) -> Self {
+        self.timeout = Some(timeout);
+        self
+    }
+
+    /// Sets the time allowed to establish a connection (30 s by default).
+    /// It is ignored when a custom HTTP client is supplied.
+    pub fn connect_timeout(mut self, timeout: Duration) -> Self {
+        self.connect_timeout = Some(timeout);
+        self
+    }
+
+    /// Sets how long a stream may stay silent (120 s by default).
+    pub fn stream_idle_timeout(mut self, timeout: Duration) -> Self {
+        self.stream_idle_timeout = Some(timeout);
+        self
+    }
+
+    /// Sets how many times a failed request is retried (2 by default).
+    pub fn max_retries(mut self, max_retries: u32) -> Self {
+        self.max_retries = Some(max_retries);
+        self
+    }
+
+    /// Adds a header sent with every request.
+    pub fn default_header(mut self, name: impl Into<String>, value: impl Into<String>) -> Self {
+        self.default_headers.push((name.into(), value.into()));
+        self
+    }
+
+    /// Uses a preconfigured `reqwest::Client` (proxy, TLS, pool settings).
+    /// Prefer [`TungoBuilder::http_client_builder`], which cannot get the
+    /// redirect policy wrong.
+    ///
+    /// # Security: the client must not follow redirects
+    ///
+    /// **Build the client with
+    /// `.redirect(reqwest::redirect::Policy::none())`.** The API key travels
+    /// in the `x-api-key` header, and reqwest keeps a custom header when it
+    /// follows a redirect to another host: a client with the default policy
+    /// hands the key to whatever host a redirect names. The SDK cannot read
+    /// or change the policy of a client it did not create.
+    ///
+    /// As a safety net, every response is checked: when it comes from another
+    /// origin (scheme, host or port) than the request was sent to, the call
+    /// fails with [`Error::Config`] and the response is discarded. By then
+    /// the key has already been sent to that origin, so treat this error as
+    /// a leaked key: revoke it and fix the client.
+    pub fn http_client(mut self, client: reqwest::Client) -> Self {
+        self.http_client = Some(client);
+        self.http_client_error = None;
+        self
+    }
+
+    /// Uses a `reqwest::ClientBuilder` you configured (proxy, TLS, pool
+    /// settings); the SDK finishes it. This is the safe way to customise the
+    /// HTTP client: the SDK itself turns redirects off before building it, so
+    /// the API key can never be forwarded to another host, whatever policy
+    /// the builder carried. Like with [`TungoBuilder::http_client`], the
+    /// connect timeout is the one of your builder.
+    ///
+    /// ```no_run
+    /// # fn main() -> tungo_sdk::Result<()> {
+    /// let http = tungo_sdk::reqwest::Client::builder().pool_max_idle_per_host(4);
+    /// let client = tungo_sdk::Tungo::builder()
+    ///     .api_key("tg_...")
+    ///     .http_client_builder(http)
+    ///     .build()?;
+    /// # let _ = client;
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub fn http_client_builder(mut self, builder: reqwest::ClientBuilder) -> Self {
+        // The API key travels in a custom header, which is not removed when
+        // a redirect leads to another host: a 3xx is an API error.
+        match builder.redirect(reqwest::redirect::Policy::none()).build() {
+            Ok(client) => {
+                self.http_client = Some(client);
+                self.http_client_error = None;
             }
-            if start.elapsed() >= timeout {
-                return Err(TungoError::local("превышено время ожидания завершения запуска"));
-            }
-            thread::sleep(interval);
-        }
-    }
-
-    /// Запустить сценарий автоматизации и дождаться его завершения.
-    pub fn run_scenario_and_wait(
-        &self,
-        scenario_id: &str,
-        body: &JsonValue,
-        opts: WaitOptions,
-    ) -> Result<JsonValue, TungoError> {
-        let mut params = BTreeMap::new();
-        if let Some(co) = opts.company_id.as_ref() {
-            params.insert("co".to_string(), co.clone());
-        }
-        let started = self.automations().run_scenario(scenario_id, body, Some(&params))?;
-        let run_id = started
-            .get("id")
-            .and_then(|v| v.as_str())
-            .ok_or_else(|| TungoError::local("в ответе run_scenario отсутствует id запуска"))?;
-        self.wait_for_run(run_id, opts)
-    }
-
-    /// Дождаться завершения задания пачки (running == false).
-    pub fn wait_for_batch(&self, batch_id: &str, opts: WaitOptions) -> Result<JsonValue, TungoError> {
-        let mut params = BTreeMap::new();
-        if let Some(co) = opts.company_id {
-            params.insert("co".to_string(), co);
-        }
-        let start = std::time::Instant::now();
-        let timeout = Duration::from_millis(if opts.timeout_ms > 0 { opts.timeout_ms } else { 60_000 });
-        let interval = Duration::from_millis(if opts.poll_interval_ms > 0 { opts.poll_interval_ms } else { 500 });
-        loop {
-            let job = self.batches().get(batch_id, Some(&params))?;
-            if !job.get("running").and_then(|v| v.as_bool()).unwrap_or(false) {
-                return Ok(job);
-            }
-            if start.elapsed() >= timeout {
-                return Err(TungoError::local("превышено время ожидания завершения пачки"));
-            }
-            thread::sleep(interval);
-        }
-    }
-
-    /// Загрузить банковскую выписку (1CClientBankExchange .txt или файл в байтах) на разбор в предложения.
-    pub fn upload_bank_statement(
-        &self,
-        file_name: &str,
-        content: &[u8],
-        is_plain_text: bool,
-        company_id: Option<&str>,
-    ) -> Result<JsonValue, TungoError> {
-        let mut body = JsonValue::empty_object();
-        body.insert("file_name", JsonValue::String(file_name.to_string()));
-        if is_plain_text {
-            body.insert(
-                "text",
-                JsonValue::String(String::from_utf8_lossy(content).to_string()),
-            );
-        } else {
-            body.insert("file", JsonValue::String(crate::crypto::base64_encode(content)));
-        }
-        let mut params = BTreeMap::new();
-        if let Some(co) = company_id {
-            params.insert("co".to_string(), co.to_string());
-        }
-        self.batches().create_bank_statement(&body, Some(&params))
-    }
-
-    /// Отправляет событие во входящий хук /hooks/{token} с автоматической HMAC-подписью X-Signature.
-    pub fn send_hook(&self, token: &str, payload: &JsonValue, secret: Option<&str>) -> Result<JsonValue, TungoError> {
-        let raw = payload.to_json_string();
-        let mut headers = BTreeMap::new();
-        if let Some(sec) = secret.filter(|s| !s.is_empty()) {
-            headers.insert("X-Signature".to_string(), sign_hook_payload(&raw, sec));
-        }
-        self.do_json(RequestSpec {
-            method: "POST".to_string(),
-            path: format!("/hooks/{}", url_encode(token)),
-            query: BTreeMap::new(),
-            headers,
-            body: None,
-            raw_body: Some(raw),
-            auth: "hook".to_string(),
-            idempotent: true,
-            idempotency_key: None,
-            retry_safe: true,
-            force_stream: false,
-        })
-    }
-
-    pub(crate) fn do_json(&self, spec: RequestSpec) -> Result<JsonValue, TungoError> {
-        let raw = self.do_raw(spec, "application/json")?;
-        if raw.trim().is_empty() {
-            return Ok(JsonValue::Null);
-        }
-        JsonValue::parse(&raw).map_err(|e| TungoError::local(&e))
-    }
-
-    pub(crate) fn do_sse(&self, spec: RequestSpec) -> Result<Vec<SSEEvent>, TungoError> {
-        let raw = self.do_raw(spec, "text/event-stream")?;
-        Ok(parse_sse(&raw))
-    }
-
-    fn do_raw(&self, spec: RequestSpec, accept: &str) -> Result<String, TungoError> {
-        let mut body_str = spec.raw_body.clone();
-        if body_str.is_none() {
-            if let Some(mut b) = spec.body.clone() {
-                if spec.force_stream {
-                    b.insert("stream", JsonValue::Bool(true));
-                }
-                body_str = Some(b.to_json_string());
+            Err(error) => {
+                self.http_client = None;
+                self.http_client_error = Some(error.to_string());
             }
         }
-        let idem_key = if spec.idempotent {
-            Some(spec.idempotency_key.clone().unwrap_or_else(gen_idempotency_key))
-        } else {
-            None
+        self
+    }
+
+    /// Does not read the `TUNGO_*` environment variables.
+    pub fn ignore_env(mut self) -> Self {
+        self.ignore_env = true;
+        self
+    }
+
+    /// Builds the client. Fails when the base URL or a default header is not
+    /// valid, or when the HTTP client cannot be created.
+    pub fn build(self) -> Result<Tungo> {
+        let env = |name: &str| {
+            if self.ignore_env {
+                return None;
+            }
+            std::env::var(name).ok().filter(|value| !value.is_empty())
         };
-
-        let max_attempts = if spec.retry_safe { 1 + self.max_retries } else { 1 };
-        for attempt in 0..max_attempts {
-            match self.send_once(&spec, body_str.as_deref(), idem_key.as_deref(), accept) {
-                Ok(resp_body) => return Ok(resp_body),
-                Err(err) => {
-                    let retryable = matches!(err.status, 429 | 502 | 503 | 504);
-                    if attempt + 1 < max_attempts && retryable {
-                        let wait_ms = err
-                            .retry_after
-                            .map(|s| (s * 1000.0) as u64)
-                            .unwrap_or(200 * (1u64 << attempt));
-                        thread::sleep(Duration::from_millis(wait_ms));
-                        continue;
-                    }
-                    return Err(err);
-                }
-            }
+        let api_key = self
+            .api_key
+            .filter(|key| !key.is_empty())
+            .or_else(|| env("TUNGO_API_KEY"));
+        if let Some(key) = &api_key {
+            HeaderValue::from_str(key)
+                .map_err(|_| Error::Config("the API key contains invalid characters".to_owned()))?;
         }
-        Err(TungoError::local("превышено число попыток"))
-    }
-
-    fn send_once(
-        &self,
-        spec: &RequestSpec,
-        body_str: Option<&str>,
-        idem_key: Option<&str>,
-        accept: &str,
-    ) -> Result<String, TungoError> {
-        let mut full_path = spec.path.clone();
-        if !spec.query.is_empty() {
-            let qs: Vec<String> = spec
-                .query
-                .iter()
-                .map(|(k, v)| format!("{}={}", url_encode(k), url_encode(v)))
-                .collect();
-            full_path.push('?');
-            full_path.push_str(&qs.join("&"));
-        }
-
-        // Для HTTPS (например, https://api.tungo.kz) в zero-dependency окружении используем системный curl,
-        // а для HTTP (локальные тестовые стенды) — прямой TcpStream.
-        if self.base_url.starts_with("https://") {
-            let full_url = format!("{}{}", self.base_url, full_path);
-            let mut cmd = std::process::Command::new("curl");
-            cmd.arg("-sS")
-                .arg("-i")
-                .arg("-X")
-                .arg(&spec.method)
-                .arg("-H")
-                .arg(format!("Accept: {}", accept))
-                .arg("-H")
-                .arg("User-Agent: tungo-sdk-rust/0.1.0");
-            if spec.auth == "key" {
-                let key = self
-                    .api_key
-                    .as_deref()
-                    .filter(|s| !s.is_empty())
-                    .ok_or_else(|| TungoError {
-                        kind: TungoErrorKind::Auth,
-                        status: 401,
-                        code: "missing_api_key".to_string(),
-                        message: "API ключ не задан".to_string(),
-                        hint: None,
-                        request_id: None,
-                        retry_after: None,
-                    })?;
-                cmd.arg("-H").arg(format!("x-api-key: {}", key));
-                cmd.arg("-H").arg(format!("Authorization: Bearer {}", key));
-            }
-            if let Some(ik) = idem_key {
-                cmd.arg("-H").arg(format!("Idempotency-Key: {}", ik));
-            }
-            for (k, v) in &spec.headers {
-                cmd.arg("-H").arg(format!("{}: {}", k, v));
-            }
-            if let Some(b) = body_str {
-                cmd.arg("-H").arg("Content-Type: application/json");
-                cmd.arg("--data-raw").arg(b);
-            }
-            cmd.arg(&full_url);
-            let out = cmd.output().map_err(|e| TungoError::local(&e.to_string()))?;
-            let raw_resp = String::from_utf8_lossy(&out.stdout).to_string();
-            let mut reader = BufReader::new(raw_resp.as_bytes());
-            return self.read_http_response(&mut reader);
-        }
-
-        let url_no_scheme = self
+        let base_url = self
             .base_url
-            .strip_prefix("http://")
-            .unwrap_or(&self.base_url);
-        let host_port = url_no_scheme.split('/').next().unwrap_or("localhost:80");
-        let addr = if host_port.contains(':') {
-            host_port.to_string()
-        } else {
-            format!("{}:80", host_port)
+            .filter(|url| !url.is_empty())
+            .or_else(|| env("TUNGO_BASE_URL"))
+            .unwrap_or_else(|| DEFAULT_BASE_URL.to_owned());
+        let base_url = base_url.trim_end_matches('/').to_owned();
+        let parsed = reqwest::Url::parse(&base_url)
+            .map_err(|e| Error::Config(format!("the base URL `{base_url}` is not valid: {e}")))?;
+        if !matches!(parsed.scheme(), "http" | "https") {
+            return Err(Error::Config(format!(
+                "the base URL `{base_url}` must start with http:// or https://"
+            )));
+        }
+        let webhook_secret = self
+            .webhook_secret
+            .filter(|secret| !secret.is_empty())
+            .or_else(|| env("TUNGO_WEBHOOK_SECRET"));
+        let mut default_headers = HeaderMap::new();
+        for (name, value) in &self.default_headers {
+            let (name, value) =
+                parse_header(name, value).map_err(|e| Error::Config(e.to_string()))?;
+            default_headers.insert(name, value);
+        }
+        if let Some(error) = self.http_client_error {
+            return Err(Error::Config(format!(
+                "cannot create the HTTP client: {error}"
+            )));
+        }
+        let http = match self.http_client {
+            Some(client) => client,
+            None => reqwest::Client::builder()
+                .connect_timeout(self.connect_timeout.unwrap_or(DEFAULT_CONNECT_TIMEOUT))
+                // The API key travels in a custom header, which is not removed
+                // when a redirect leads to another host: a 3xx is an API error.
+                .redirect(reqwest::redirect::Policy::none())
+                .build()
+                .map_err(|e| Error::Config(format!("cannot create the HTTP client: {e}")))?,
         };
+        Ok(Tungo {
+            inner: Arc::new(Inner {
+                http,
+                api_key,
+                base_url,
+                webhook_secret,
+                company_id: self.company_id.filter(|id| !id.is_empty()),
+                workspace_id: self.workspace_id.filter(|id| !id.is_empty()),
+                timeout: self.timeout,
+                max_retries: self.max_retries.unwrap_or(retry::DEFAULT_MAX_RETRIES),
+                default_headers,
+                stream_idle_timeout: self
+                    .stream_idle_timeout
+                    .unwrap_or(DEFAULT_STREAM_IDLE_TIMEOUT),
+            }),
+            options: RequestOptions::default(),
+            key_used: Arc::new(AtomicBool::new(false)),
+        })
+    }
+}
 
-        let mut stream = TcpStream::connect(&addr).map_err(|e| TungoError::local(&e.to_string()))?;
-        let _ = stream.set_read_timeout(Some(Duration::from_secs(30)));
+/// A request with everything resolved, ready to be sent (and re-sent).
+struct Prepared {
+    method: reqwest::Method,
+    url: reqwest::Url,
+    headers: HeaderMap,
+    body: Option<Vec<u8>>,
+    timeout: Duration,
+    idle_timeout: Duration,
+    max_retries: u32,
+    has_key: bool,
+}
 
-        let mut req = format!(
-            "{} {} HTTP/1.1\r\nHost: {}\r\nAccept: {}\r\nConnection: close\r\nUser-Agent: tungo-sdk-rust/0.1.0\r\n",
-            spec.method, full_path, host_port, accept
-        );
-        if spec.auth == "key" {
-            let key = self
-                .api_key
-                .as_deref()
-                .filter(|s| !s.is_empty())
-                .ok_or_else(|| TungoError {
-                    kind: TungoErrorKind::Auth,
-                    status: 401,
-                    code: "missing_api_key".to_string(),
-                    message: "API ключ не задан".to_string(),
-                    hint: None,
-                    request_id: None,
-                    retry_after: None,
+impl Tungo {
+    /// Starts configuring a client.
+    pub fn builder() -> TungoBuilder {
+        TungoBuilder::default()
+    }
+
+    /// Creates a client with the given API key and default settings.
+    pub fn new(api_key: impl Into<String>) -> Result<Self> {
+        Self::builder().api_key(api_key).build()
+    }
+
+    /// Creates a client configured from `TUNGO_API_KEY`, `TUNGO_BASE_URL`
+    /// and `TUNGO_WEBHOOK_SECRET`.
+    pub fn from_env() -> Result<Self> {
+        Self::builder().build()
+    }
+
+    /// Returns a client that applies `options` to every call made through
+    /// it. The original client is not changed; both share one connection pool.
+    ///
+    /// ```no_run
+    /// # use tungo_sdk::{RequestOptions, Tungo};
+    /// # async fn run(client: Tungo) -> tungo_sdk::Result<()> {
+    /// let options = RequestOptions::new().idempotency_key("order-1532");
+    /// client.with_options(options).proposals().approve("P-000042", None).await?;
+    /// # Ok(())
+    /// # }
+    /// ```
+    ///
+    /// An idempotency key in `options` is good for **one request**: the
+    /// returned client (and its clones) sends it with the first operation
+    /// that accepts an `Idempotency-Key`, and a second such operation fails
+    /// with [`Error::Validation`] instead of reusing the key. Operations that
+    /// do not accept the header, such as every `GET`, never carry it. Call
+    /// `with_options` again for the next request, also to repeat the same
+    /// one with the same key.
+    #[must_use]
+    pub fn with_options(&self, options: RequestOptions) -> Tungo {
+        let key_used = if options.idempotency_key.is_some() {
+            Arc::new(AtomicBool::new(false))
+        } else {
+            Arc::clone(&self.key_used)
+        };
+        Tungo {
+            inner: Arc::clone(&self.inner),
+            options: self.options.merged(&options),
+            key_used,
+        }
+    }
+
+    /// The base URL the client talks to.
+    pub fn base_url(&self) -> &str {
+        &self.inner.base_url
+    }
+
+    /// The default company id.
+    pub fn company_id(&self) -> Option<&str> {
+        self.inner.company_id.as_deref()
+    }
+
+    /// The default workspace id.
+    pub fn workspace_id(&self) -> Option<&str> {
+        self.inner.workspace_id.as_deref()
+    }
+
+    pub(crate) fn webhook_secret(&self) -> Option<&str> {
+        self.inner.webhook_secret.as_deref()
+    }
+
+    /// Sends a request and decodes the JSON answer.
+    pub async fn execute<T: DeserializeOwned>(&self, request: Request) -> Result<Response<T>> {
+        self.send(request).await?.json()
+    }
+
+    /// Sends a request whose answer has no content.
+    pub async fn execute_empty(&self, request: Request) -> Result<Response<()>> {
+        Ok(self.send(request).await?.empty())
+    }
+
+    /// Sends a request and returns the complete, undecoded response.
+    pub async fn send(&self, request: Request) -> Result<RawResponse> {
+        let prepared = self.prepare(request, false)?;
+        self.send_buffered(&prepared).await
+    }
+
+    /// Sends a request and returns the server-sent events of the answer as
+    /// a stream of `T`. There is no total timeout; the stream fails when no
+    /// bytes arrive for the idle timeout.
+    pub async fn execute_stream<T: DeserializeOwned>(
+        &self,
+        request: Request,
+    ) -> Result<EventStream<T>> {
+        let prepared = self.prepare(request, true)?;
+        let (response, meta) = self.open_stream(&prepared).await?;
+        Ok(EventStream::new(response, meta, prepared.idle_timeout))
+    }
+
+    /// Sends a list request and returns one page that can fetch the next one.
+    pub async fn execute_page<P: CursorPage>(&self, request: Request) -> Result<Page<P>> {
+        let response = self.execute::<P>(request.clone()).await?;
+        Ok(Page::new(self.clone(), request, response))
+    }
+
+    /// Returns a lazy stream over the items of every page of a list request.
+    pub fn paginate<P>(&self, request: Result<Request>) -> ItemStream<P::Item>
+    where
+        P: CursorPage + Send + 'static,
+        P::Item: Send + 'static,
+    {
+        ItemStream::new::<P>(self.clone(), request)
+    }
+
+    fn prepare(&self, request: Request, stream: bool) -> Result<Prepared> {
+        let inner = &self.inner;
+        let options = &self.options;
+        let mut path = request.path;
+        for (placeholder, label, explicit, default) in [
+            ("{co}", "company", &options.company_id, &inner.company_id),
+            (
+                "{ws}",
+                "workspace",
+                &options.workspace_id,
+                &inner.workspace_id,
+            ),
+        ] {
+            if !path.contains(placeholder) {
+                continue;
+            }
+            let id = explicit.as_deref().or(default.as_deref()).ok_or_else(|| {
+                Error::Config(format!(
+                    "this call needs a {label} id: set it on the client builder or in the request options"
+                ))
+            })?;
+            path = path.replace(placeholder, &encode_path_segment(label, id)?);
+        }
+        if path.contains('{') || path.contains('}') {
+            return Err(Error::Validation(format!(
+                "the path `{path}` has an unfilled placeholder"
+            )));
+        }
+        let mut url = format!("{}{}", inner.base_url, path);
+        if !request.query.is_empty() {
+            url.push('?');
+            url.push_str(&encode_query(&request.query));
+        }
+
+        let url = reqwest::Url::parse(&url)
+            .map_err(|e| Error::Validation(format!("the request URL is not valid: {e}")))?;
+
+        let mut headers = inner.default_headers.clone();
+        for (name, value) in &options.headers {
+            headers.insert(name.clone(), value.clone());
+        }
+        // An idempotency key belongs to one request: it is never taken from
+        // headers that many calls share (use `RequestOptions::idempotency_key`).
+        headers.remove(IDEMPOTENCY_KEY);
+        for (name, value) in &request.headers {
+            headers.insert(name.clone(), value.clone());
+        }
+        headers.insert(USER_AGENT, HeaderValue::from_static(SDK_USER_AGENT));
+        let accept = if stream {
+            "text/event-stream"
+        } else {
+            "application/json"
+        };
+        headers.insert(ACCEPT, HeaderValue::from_static(accept));
+        if let Some(content_type) = &request.content_type {
+            let value = HeaderValue::from_str(content_type)
+                .map_err(|_| Error::Validation("the content type is not valid".to_owned()))?;
+            headers.insert(CONTENT_TYPE, value);
+        }
+        match request.auth {
+            Auth::ApiKey => {
+                let key = inner.api_key.as_deref().ok_or_else(|| {
+                    Error::Config(
+                        "no API key: pass one to the client builder or set TUNGO_API_KEY"
+                            .to_owned(),
+                    )
                 })?;
-            req.push_str(&format!("x-api-key: {}\r\nAuthorization: Bearer {}\r\n", key, key));
+                let mut value = HeaderValue::from_str(key).map_err(|_| {
+                    Error::Config("the API key contains invalid characters".to_owned())
+                })?;
+                value.set_sensitive(true);
+                headers.insert(API_KEY, value);
+            }
+            Auth::None => {
+                headers.remove(API_KEY);
+                headers.remove(reqwest::header::AUTHORIZATION);
+            }
         }
-        if let Some(ik) = idem_key {
-            req.push_str(&format!("Idempotency-Key: {}\r\n", ik));
+        // The key goes only to an operation that accepts it; anywhere else it
+        // would be ignored by the API and make a retry look safe when it is not.
+        let explicit = headers.contains_key(IDEMPOTENCY_KEY);
+        let own_key = options
+            .idempotency_key
+            .as_ref()
+            .filter(|_| request.idempotent && !explicit);
+        let key = match own_key {
+            Some(key) => Some(key.clone()),
+            None if request.idempotent && !explicit => Some(uuid::Uuid::new_v4().to_string()),
+            None => None,
+        };
+        if let Some(key) = &key {
+            let value = HeaderValue::from_str(key).map_err(|_| {
+                Error::Validation("the idempotency key contains invalid characters".to_owned())
+            })?;
+            headers.insert(IDEMPOTENCY_KEY, value);
         }
-        for (k, v) in &spec.headers {
-            req.push_str(&format!("{}: {}\r\n", k, v));
+        // Nothing below can fail, so a key is used up only by a request that is sent.
+        if own_key.is_some() && self.key_used.swap(true, Ordering::SeqCst) {
+            return Err(Error::Validation(
+                "the idempotency key of these request options was already sent with another \
+                 request; call `with_options` again for every request that carries a key"
+                    .to_owned(),
+            ));
         }
-        if let Some(b) = body_str {
-            req.push_str("Content-Type: application/json\r\n");
-            req.push_str(&format!("Content-Length: {}\r\n\r\n{}", b.len(), b));
+
+        let default_timeout = if request.long_running {
+            DEFAULT_LONG_TIMEOUT
         } else {
-            req.push_str("Content-Length: 0\r\n\r\n");
-        }
-
-        stream
-            .write_all(req.as_bytes())
-            .map_err(|e| TungoError::local(&e.to_string()))?;
-
-        let mut reader = BufReader::new(stream);
-        self.read_http_response(&mut reader)
+            DEFAULT_TIMEOUT
+        };
+        Ok(Prepared {
+            has_key: explicit || key.is_some(),
+            method: request.method,
+            url,
+            headers,
+            body: request.body,
+            timeout: options.timeout.or(inner.timeout).unwrap_or(default_timeout),
+            idle_timeout: options
+                .stream_idle_timeout
+                .unwrap_or(inner.stream_idle_timeout),
+            max_retries: options.max_retries.unwrap_or(inner.max_retries),
+        })
     }
 
-    fn read_http_response<R: BufRead>(&self, reader: &mut R) -> Result<String, TungoError> {
-        let mut status_line = String::new();
-        reader
-            .read_line(&mut status_line)
-            .map_err(|e| TungoError::local(&e.to_string()))?;
-        let status: u16 = status_line
-            .split_whitespace()
-            .nth(1)
-            .and_then(|s| s.parse().ok())
-            .unwrap_or(500);
+    fn start(&self, prepared: &Prepared) -> reqwest::RequestBuilder {
+        let mut builder = self
+            .inner
+            .http
+            .request(prepared.method.clone(), prepared.url.clone())
+            .headers(prepared.headers.clone());
+        if let Some(body) = &prepared.body {
+            builder = builder.body(body.clone());
+        }
+        builder
+    }
 
-        let mut resp_headers = BTreeMap::new();
+    /// Sends the request with retries and reads the whole body. The timeout
+    /// covers one attempt from sending the request to the last body byte.
+    async fn send_buffered(&self, prepared: &Prepared) -> Result<RawResponse> {
+        let mut attempt = 0u32;
         loop {
-            let mut line = String::new();
-            reader
-                .read_line(&mut line)
-                .map_err(|e| TungoError::local(&e.to_string()))?;
-            if line == "\r\n" || line == "\n" || line.is_empty() {
-                break;
+            let exchange = async {
+                let response = self.start(prepared).send().await?;
+                if let Some(error) = foreign_origin(prepared, &response) {
+                    return Ok(Err(error));
+                }
+                let status = response.status().as_u16();
+                let headers = response.headers().clone();
+                let body = response.bytes().await?;
+                Ok::<_, reqwest::Error>(Ok((status, headers, body)))
+            };
+            let what = format!("the request did not complete within {:?}", prepared.timeout);
+            let outcome = match deadline(prepared.timeout, &what, exchange).await {
+                Ok(Ok(answer)) => Ok(answer),
+                // Never retried: the request must not be repeated through this client.
+                Ok(Err(redirected)) => return Err(redirected),
+                Err(error) => Err(error),
+            };
+            let failure = match outcome {
+                Ok((status, headers, body)) if (200..300).contains(&status) => {
+                    let meta = ResponseMeta::new(status, headers);
+                    return Ok(RawResponse::new(meta, body.to_vec()));
+                }
+                Ok((status, headers, body)) => Failure::Status(Box::new(
+                    ApiError::from_response_at(status, &headers, &body, SystemTime::now()),
+                )),
+                Err(error) => Failure::Transport(error),
+            };
+            match self.next_delay(prepared, attempt, &failure) {
+                Some(delay) => tokio::time::sleep(delay).await,
+                None => return Err(failure.into_error()),
             }
-            if let Some((k, v)) = line.split_once(':') {
-                resp_headers.insert(k.trim().to_ascii_lowercase(), v.trim().to_string());
-            }
-        }
-
-        if let (Some(lim), Some(rem), Some(res)) = (
-            resp_headers.get("x-ratelimit-limit").and_then(|s| s.parse().ok()),
-            resp_headers.get("x-ratelimit-remaining").and_then(|s| s.parse().ok()),
-            resp_headers.get("x-ratelimit-reset").and_then(|s| s.parse().ok()),
-        ) {
-            if let Ok(mut g) = self.last_rate_limit.lock() {
-                *g = Some(RateLimitInfo {
-                    limit: lim,
-                    remaining: rem,
-                    reset: res,
-                });
-            }
-        }
-
-        let mut resp_body = String::new();
-        reader
-            .read_to_string(&mut resp_body)
-            .map_err(|e| TungoError::local(&e.to_string()))?;
-
-        if (200..300).contains(&status) {
-            Ok(resp_body)
-        } else {
-            Err(parse_api_error(status, &resp_body, &resp_headers))
+            attempt += 1;
         }
     }
 
-    /// Организации (workspace), доступные ключу API
-    pub fn workspaces(&self) -> crate::resources::WorkspacesResource<'_> {
-        crate::resources::WorkspacesResource { client: self }
+    /// Opens a streaming response. Retries happen only here, before the
+    /// first byte of the stream is handed to the caller.
+    async fn open_stream(&self, prepared: &Prepared) -> Result<(reqwest::Response, ResponseMeta)> {
+        let idle = prepared.idle_timeout;
+        let what = format!("the stream did not start within {idle:?}");
+        let mut attempt = 0u32;
+        loop {
+            let opening = deadline(idle, &what, self.start(prepared).send()).await;
+            if let Ok(response) = &opening {
+                if let Some(error) = foreign_origin(prepared, response) {
+                    return Err(error);
+                }
+            }
+            let failure = match opening {
+                Ok(mut response) if response.status().is_success() => {
+                    let meta =
+                        ResponseMeta::new(response.status().as_u16(), response.headers().clone());
+                    let content_type = meta.header("content-type").unwrap_or("").to_owned();
+                    if !is_event_stream(&content_type) {
+                        // A success that is not a stream (a JSON answer, a proxy
+                        // page) must not look like a stream without events.
+                        let start = match deadline(idle, &what, response.chunk()).await {
+                            Ok(Some(chunk)) => snippet(&chunk),
+                            _ => String::new(),
+                        };
+                        return Err(Error::Decode {
+                            message: format!(
+                                "expected a text/event-stream response, got content type `{content_type}`"
+                            ),
+                            status: Some(meta.status()),
+                            request_id: meta.request_id().map(str::to_owned),
+                            body: start,
+                            source: None,
+                        });
+                    }
+                    return Ok((response, meta));
+                }
+                Ok(response) => {
+                    let status = response.status().as_u16();
+                    let headers = response.headers().clone();
+                    match deadline(idle, &what, response.bytes()).await {
+                        Ok(body) => Failure::Status(Box::new(ApiError::from_response_at(
+                            status,
+                            &headers,
+                            &body,
+                            SystemTime::now(),
+                        ))),
+                        Err(error) => Failure::Transport(error),
+                    }
+                }
+                Err(error) => Failure::Transport(error),
+            };
+            match self.next_delay(prepared, attempt, &failure) {
+                Some(delay) => tokio::time::sleep(delay).await,
+                None => return Err(failure.into_error()),
+            }
+            attempt += 1;
+        }
     }
 
-    /// Компании организации и их карточки
-    pub fn companies(&self) -> crate::resources::CompaniesResource<'_> {
-        crate::resources::CompaniesResource { client: self }
+    /// The delay before the next attempt, or `None` when the failure is final.
+    fn next_delay(&self, prepared: &Prepared, attempt: u32, failure: &Failure) -> Option<Duration> {
+        if attempt >= prepared.max_retries {
+            return None;
+        }
+        let (cause, retry_after) = match failure {
+            Failure::Status(error) => (FailureCause::Status(error.status), error.retry_after),
+            Failure::Transport(Error::Timeout { .. }) => (FailureCause::Timeout, None),
+            Failure::Transport(_) => (FailureCause::Connection, None),
+        };
+        if !retry::should_retry(&prepared.method, prepared.has_key, cause) {
+            return None;
+        }
+        match retry::retry_delay(retry_after, attempt, retry::random_jitter()) {
+            RetryDecision::Sleep(delay) => Some(delay),
+            RetryDecision::GiveUp => None,
+        }
     }
-
-    /// Баланс платформы, книга движений, отчёты о расходе, лимиты, аудит и тарифы моделей
-    pub fn platform(&self) -> crate::resources::PlatformResource<'_> {
-        crate::resources::PlatformResource { client: self }
-    }
-
-    /// Сведения о текущем ключе API и статистика его расхода
-    pub fn api_keys(&self) -> crate::resources::ApiKeysResource<'_> {
-        crate::resources::ApiKeysResource { client: self }
-    }
-
-    /// Исходящие вебхуки организации (Svix): адреса, каталог событий, доставки и проверка подписи
-    pub fn webhooks(&self) -> crate::resources::WebhooksResource<'_> {
-        crate::resources::WebhooksResource { client: self }
-    }
-
-    /// Диалоги с ИИ-бухгалтером: вопросы, потоковый чат (SSE), подсчёт токенов и история
-    pub fn chat(&self) -> crate::resources::ChatResource<'_> {
-        crate::resources::ChatResource { client: self }
-    }
-
-    /// Предложения документов ИИ-бухгалтера: просмотр, одобрение записи в 1С и отклонение
-    pub fn proposals(&self) -> crate::resources::ProposalsResource<'_> {
-        crate::resources::ProposalsResource { client: self }
-    }
-
-    /// Лента событий и предложений компании (страницы и живой поток SSE)
-    pub fn feed(&self) -> crate::resources::FeedResource<'_> {
-        crate::resources::FeedResource { client: self }
-    }
-
-    /// Пачки обработки банковских выписок, входящих ЭСФ и DirectBank
-    pub fn batches(&self) -> crate::resources::BatchesResource<'_> {
-        crate::resources::BatchesResource { client: self }
-    }
-
-    /// Входящие и исходящие электронные счета-фактуры (ИС ЭСФ)
-    pub fn esf(&self) -> crate::resources::EsfResource<'_> {
-        crate::resources::EsfResource { client: self }
-    }
-
-    /// Налоговые формы (ФНО 100.00 и др.): сборка, проверка ИСНА и разрывы данных
-    pub fn forms(&self) -> crate::resources::FormsResource<'_> {
-        crate::resources::FormsResource { client: self }
-    }
-
-    /// Состояние подключения компании к базе 1С
-    pub fn onec(&self) -> crate::resources::OnecResource<'_> {
-        crate::resources::OnecResource { client: self }
-    }
-
-    /// Автоматизации компании: входящие хуки, сценарии, цепочки шагов, запуски и уровень автономности ИИ
-    pub fn automations(&self) -> crate::resources::AutomationsResource<'_> {
-        crate::resources::AutomationsResource { client: self }
-    }
-
 }
 
-fn url_encode(input: &str) -> String {
-    let mut out = String::with_capacity(input.len());
-    for b in input.bytes() {
-        match b {
-            b'A'..=b'Z' | b'a'..=b'z' | b'0'..=b'9' | b'-' | b'_' | b'.' | b'~' => {
-                out.push(b as char);
-            }
-            _ => out.push_str(&format!("%{:02X}", b)),
-        }
-    }
-    out
+enum Failure {
+    Status(Box<ApiError>),
+    Transport(Error),
 }
 
-fn gen_idempotency_key() -> String {
-    let nanos = SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .map(|d| d.as_nanos())
-        .unwrap_or(1);
-    format!("idem-{:x}", nanos)
+impl Failure {
+    fn into_error(self) -> Error {
+        match self {
+            Failure::Status(error) => Error::Api(error),
+            Failure::Transport(error) => error,
+        }
+    }
+}
+
+/// Whether a `Content-Type` value names `text/event-stream`.
+fn is_event_stream(content_type: &str) -> bool {
+    let media_type = content_type.split(';').next().unwrap_or("");
+    media_type.trim().eq_ignore_ascii_case("text/event-stream")
+}
+
+/// The error for a response that came from another origin than the request
+/// was sent to: a caller-supplied HTTP client followed a redirect, and the
+/// `x-api-key` header went with it. The response is not handed out.
+fn foreign_origin(prepared: &Prepared, response: &reqwest::Response) -> Option<Error> {
+    let landed = response.url();
+    if landed.origin() == prepared.url.origin() {
+        return None;
+    }
+    // Only the origin is named: a path may hold a secret (a hook token).
+    Some(Error::Config(format!(
+        "the HTTP client followed a redirect from {} to another origin ({}); the response was \
+         discarded. The request headers, including the API key, were sent there: revoke the key, \
+         and build the HTTP client with `redirect(Policy::none())` or pass a \
+         `reqwest::ClientBuilder` to `TungoBuilder::http_client_builder`",
+        prepared.url.origin().ascii_serialization(),
+        landed.origin().ascii_serialization(),
+    )))
+}
+
+/// Runs a transport future under a deadline and converts its errors.
+async fn deadline<T>(
+    limit: Duration,
+    what: &str,
+    future: impl Future<Output = std::result::Result<T, reqwest::Error>>,
+) -> Result<T> {
+    match tokio::time::timeout(limit, future).await {
+        Ok(Ok(value)) => Ok(value),
+        Ok(Err(error)) => Err(Error::from_reqwest(error)),
+        Err(_) => Err(Error::timeout(what, None)),
+    }
 }

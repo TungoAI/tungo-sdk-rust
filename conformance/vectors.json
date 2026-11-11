@@ -1,96 +1,3696 @@
 {
+  "version": 2,
+  "description": "Shared conformance vectors of the Tungo SDKs. Hand-maintained; the structure is documented at the top of conformance_test.go in tungo-sdkgen, which verifies every case against a Go standard-library reference implementation.",
   "webhook_verification": {
-    "secret": "whsec_MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=",
-    "msg_id": "msg_2xyzExample123",
-    "timestamp": 1793974568,
-    "body": "{\"id\":\"evt_01h455vb4pex5vsknk084sn02q\",\"type\":\"proposal.written\",\"created_at\":\"2026-11-09T15:00:00.000Z\",\"workspace_id\":\"ws_01h455vb4pex5vsknk084sn02q\",\"company_id\":\"co_01h455vb4pex5vsknk084sn02q\",\"data\":{\"proposal_id\":\"P-000042\",\"document_kind\":\"payment_order_outgoing\",\"amount_tiyn\":4500000,\"number\":\"00000000123\",\"date\":\"2026-11-09\"}}",
-    "valid_signature": "v1,QseAJ0qEpHlvPNYIIqO95CN5QTD+Xz50R1FhRqds9aw=",
-    "dual_signature": "v1,aW52YWxpZHNpZ25hdHVyZXZhbHVlMTIzNDU2Nzg5MDEy v1,QseAJ0qEpHlvPNYIIqO95CN5QTD+Xz50R1FhRqds9aw=",
-    "bad_signature": "v1,aW52YWxpZHNpZ25hdHVyZXZhbHVlMTIzNDU2Nzg5MDEy"
-  },
-  "incoming_hook": {
-    "secret": "hksec_test_secret_key_for_hmac_256",
-    "body": "{\"id\":\"order_1532\",\"amount_tiyn\":4500000,\"customer_bin\":\"123456789012\"}",
-    "hex_signature": "2d4fe42ff3341a55bc43dc9685d09f87cff81a04a51630a7270b4ee45749a638",
-    "prefixed_signature": "sha256=2d4fe42ff3341a55bc43dc9685d09f87cff81a04a51630a7270b4ee45749a638"
-  },
-  "money": [
-    {
-      "tenge": 0,
-      "tiyn": 0,
-      "formatted": "0,00 ₸"
-    },
-    {
-      "tenge": 120,
-      "tiyn": 12000,
-      "formatted": "120,00 ₸"
-    },
-    {
-      "tenge": 45000.5,
-      "tiyn": 4500050,
-      "formatted": "45 000,50 ₸"
-    }
-  ],
-  "bin_iin": [
-    {
-      "value": "000000000000",
-      "valid": true
-    },
-    {
-      "value": "990140000017",
-      "valid": true
-    },
-    {
-      "value": "991140000015",
-      "valid": true
-    },
-    {
-      "value": "990140000016",
-      "valid": false
-    },
-    {
-      "value": "12345",
-      "valid": false
-    },
-    {
-      "value": "99014000001A",
-      "valid": false
-    }
-  ],
-  "errors": [
-    {
-      "status": 402,
-      "body": "{\"type\":\"error\",\"error\":{\"type\":\"payment_required_error\",\"code\":\"platform_balance_exhausted\",\"message\":\"Баланс платформы исчерпан — пополните счёт в кабинете.\",\"hint\":\"Откройте Настройки -\u003e Баланс платформы и пополните счёт.\"},\"request_id\":\"req_01jbalance001\"}",
-      "error_type": "payment_required_error",
-      "error_code": "platform_balance_exhausted",
-      "hint": "Откройте Настройки -\u003e Баланс платформы и пополните счёт.",
-      "request_id": "req_01jbalance001"
-    },
-    {
-      "status": 429,
-      "body": "{\"type\":\"error\",\"error\":{\"type\":\"limit_error\",\"code\":\"rate_limited\",\"message\":\"Слишком много запросов по этому ключу API — подождите немного\",\"hint\":\"Дождитесь сброса лимита по заголовку Retry-After.\"},\"request_id\":\"req_01jratelimit2\"}",
-      "error_type": "limit_error",
-      "error_code": "rate_limited",
-      "hint": "Дождитесь сброса лимита по заголовку Retry-After.",
-      "request_id": "req_01jratelimit2"
-    }
-  ],
-  "sse": {
-    "raw_stream": "event: text\ndata: {\"type\":\"text\",\"delta\":\"НДС составляет \"}\n\nevent: text\ndata: {\"type\":\"text\",\"delta\":\"5 400 ₸.\"}\n\nevent: done\ndata: {\"type\":\"done\",\"dialog_id\":\"dlg_01\",\"turn_no\":1,\"stop_reason\":\"end_turn\",\"cost_tiyn\":185}\n\n",
-    "expected_text": "НДС составляет 5 400 ₸.",
-    "events": [
+    "default_tolerance_seconds": 300,
+    "cases": [
       {
-        "event": "text",
-        "data": "{\"type\":\"text\",\"delta\":\"НДС составляет \"}"
+        "name": "valid, svix-* headers",
+        "secret": "whsec_MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=",
+        "headers": {
+          "svix-id": "msg_2xyzExample123",
+          "svix-timestamp": "1793974568",
+          "svix-signature": "v1,ZRCt3+b69jHpabRApIIfKTd6llLmiFecNltLMFlNk/c="
+        },
+        "body": "{\"id\":\"evt_01h455vb4pex5vsknk084sn02q\",\"type\":\"proposal.written\",\"created_at\":\"2026-11-09T15:00:00.000Z\",\"workspace_id\":\"ws_01h455vb4pex5vsknk084sn02q\",\"company_id\":\"co_01h455vb4pex5vsknk084sn02q\",\"data\":{\"proposal_id\":\"P-000042\",\"kind\":\"payment_out\",\"status\":\"written\",\"amount_tiyn\":1250000,\"onec_document_number\":\"00ЦБ-000042\"}}",
+        "now": 1793974568,
+        "expect": {
+          "valid": true,
+          "event_type": "proposal.written"
+        }
       },
       {
-        "event": "text",
-        "data": "{\"type\":\"text\",\"delta\":\"5 400 ₸.\"}"
+        "name": "valid, webhook-* headers",
+        "secret": "whsec_MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=",
+        "headers": {
+          "webhook-id": "msg_2xyzExample123",
+          "webhook-timestamp": "1793974568",
+          "webhook-signature": "v1,ZRCt3+b69jHpabRApIIfKTd6llLmiFecNltLMFlNk/c="
+        },
+        "body": "{\"id\":\"evt_01h455vb4pex5vsknk084sn02q\",\"type\":\"proposal.written\",\"created_at\":\"2026-11-09T15:00:00.000Z\",\"workspace_id\":\"ws_01h455vb4pex5vsknk084sn02q\",\"company_id\":\"co_01h455vb4pex5vsknk084sn02q\",\"data\":{\"proposal_id\":\"P-000042\",\"kind\":\"payment_out\",\"status\":\"written\",\"amount_tiyn\":1250000,\"onec_document_number\":\"00ЦБ-000042\"}}",
+        "now": 1793974568,
+        "expect": {
+          "valid": true,
+          "event_type": "proposal.written"
+        }
       },
       {
-        "event": "done",
-        "data": "{\"type\":\"done\",\"dialog_id\":\"dlg_01\",\"turn_no\":1,\"stop_reason\":\"end_turn\",\"cost_tiyn\":185}"
+        "name": "valid, header names in mixed case",
+        "secret": "whsec_MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=",
+        "headers": {
+          "Svix-Id": "msg_2xyzExample123",
+          "SVIX-TIMESTAMP": "1793974568",
+          "Svix-Signature": "v1,ZRCt3+b69jHpabRApIIfKTd6llLmiFecNltLMFlNk/c="
+        },
+        "body": "{\"id\":\"evt_01h455vb4pex5vsknk084sn02q\",\"type\":\"proposal.written\",\"created_at\":\"2026-11-09T15:00:00.000Z\",\"workspace_id\":\"ws_01h455vb4pex5vsknk084sn02q\",\"company_id\":\"co_01h455vb4pex5vsknk084sn02q\",\"data\":{\"proposal_id\":\"P-000042\",\"kind\":\"payment_out\",\"status\":\"written\",\"amount_tiyn\":1250000,\"onec_document_number\":\"00ЦБ-000042\"}}",
+        "now": 1793974568,
+        "expect": {
+          "valid": true,
+          "event_type": "proposal.written"
+        }
+      },
+      {
+        "name": "valid, second of two signatures matches",
+        "secret": "whsec_MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=",
+        "headers": {
+          "svix-id": "msg_2xyzExample123",
+          "svix-timestamp": "1793974568",
+          "svix-signature": "v1,dGhpcy1pcy1ub3QtdGhlLXJpZ2h0LXNpZ25hdHVyZSE= v1,ZRCt3+b69jHpabRApIIfKTd6llLmiFecNltLMFlNk/c="
+        },
+        "body": "{\"id\":\"evt_01h455vb4pex5vsknk084sn02q\",\"type\":\"proposal.written\",\"created_at\":\"2026-11-09T15:00:00.000Z\",\"workspace_id\":\"ws_01h455vb4pex5vsknk084sn02q\",\"company_id\":\"co_01h455vb4pex5vsknk084sn02q\",\"data\":{\"proposal_id\":\"P-000042\",\"kind\":\"payment_out\",\"status\":\"written\",\"amount_tiyn\":1250000,\"onec_document_number\":\"00ЦБ-000042\"}}",
+        "now": 1793974568,
+        "expect": {
+          "valid": true,
+          "event_type": "proposal.written"
+        }
+      },
+      {
+        "name": "valid, unknown signature versions are skipped",
+        "secret": "whsec_MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=",
+        "headers": {
+          "svix-id": "msg_2xyzExample123",
+          "svix-timestamp": "1793974568",
+          "svix-signature": "v2,AAAA v1,ZRCt3+b69jHpabRApIIfKTd6llLmiFecNltLMFlNk/c= v1a,BBBB"
+        },
+        "body": "{\"id\":\"evt_01h455vb4pex5vsknk084sn02q\",\"type\":\"proposal.written\",\"created_at\":\"2026-11-09T15:00:00.000Z\",\"workspace_id\":\"ws_01h455vb4pex5vsknk084sn02q\",\"company_id\":\"co_01h455vb4pex5vsknk084sn02q\",\"data\":{\"proposal_id\":\"P-000042\",\"kind\":\"payment_out\",\"status\":\"written\",\"amount_tiyn\":1250000,\"onec_document_number\":\"00ЦБ-000042\"}}",
+        "now": 1793974568,
+        "expect": {
+          "valid": true,
+          "event_type": "proposal.written"
+        }
+      },
+      {
+        "name": "valid signature, data lacks required properties (tolerant decoding)",
+        "secret": "whsec_MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=",
+        "headers": {
+          "svix-id": "msg_2xyzExample123",
+          "svix-timestamp": "1793974568",
+          "svix-signature": "v1,4H/XE/Z5TVdWNr7mzvFh+DuOghc+OuBDkZ1b82Fwhww="
+        },
+        "body": "{\"id\":\"evt_01h455vb4pex5vsknk084sn02q\",\"type\":\"proposal.written\",\"created_at\":\"2026-11-09T15:00:00.000Z\",\"workspace_id\":\"ws_01h455vb4pex5vsknk084sn02q\",\"company_id\":\"co_01h455vb4pex5vsknk084sn02q\",\"data\":{\"proposal_id\":\"P-000042\",\"kind\":\"Платёжное поручение\"}}",
+        "now": 1793974568,
+        "contract_valid": false,
+        "expect": {
+          "valid": true,
+          "event_type": "proposal.written"
+        }
+      },
+      {
+        "name": "tampered body",
+        "secret": "whsec_MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=",
+        "headers": {
+          "svix-id": "msg_2xyzExample123",
+          "svix-timestamp": "1793974568",
+          "svix-signature": "v1,ZRCt3+b69jHpabRApIIfKTd6llLmiFecNltLMFlNk/c="
+        },
+        "body": "{\"id\":\"evt_01h455vb4pex5vsknk084sn02q\",\"type\":\"proposal.written\",\"created_at\":\"2026-11-09T15:00:00.000Z\",\"workspace_id\":\"ws_01h455vb4pex5vsknk084sn02q\",\"company_id\":\"co_01h455vb4pex5vsknk084sn02q\",\"data\":{\"proposal_id\":\"P-000043\",\"kind\":\"payment_out\",\"status\":\"written\",\"amount_tiyn\":1250000,\"onec_document_number\":\"00ЦБ-000042\"}}",
+        "now": 1793974568,
+        "expect": {
+          "valid": false,
+          "reason": "signature_mismatch"
+        }
+      },
+      {
+        "name": "wrong secret",
+        "secret": "whsec_YW5vdGhlci1zZWNyZXQtYW5vdGhlci1zZWNyZXQtMDA=",
+        "headers": {
+          "svix-id": "msg_2xyzExample123",
+          "svix-timestamp": "1793974568",
+          "svix-signature": "v1,ZRCt3+b69jHpabRApIIfKTd6llLmiFecNltLMFlNk/c="
+        },
+        "body": "{\"id\":\"evt_01h455vb4pex5vsknk084sn02q\",\"type\":\"proposal.written\",\"created_at\":\"2026-11-09T15:00:00.000Z\",\"workspace_id\":\"ws_01h455vb4pex5vsknk084sn02q\",\"company_id\":\"co_01h455vb4pex5vsknk084sn02q\",\"data\":{\"proposal_id\":\"P-000042\",\"kind\":\"payment_out\",\"status\":\"written\",\"amount_tiyn\":1250000,\"onec_document_number\":\"00ЦБ-000042\"}}",
+        "now": 1793974568,
+        "expect": {
+          "valid": false,
+          "reason": "signature_mismatch"
+        }
+      },
+      {
+        "name": "no signature matches",
+        "secret": "whsec_MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=",
+        "headers": {
+          "svix-id": "msg_2xyzExample123",
+          "svix-timestamp": "1793974568",
+          "svix-signature": "v1,dGhpcy1pcy1ub3QtdGhlLXJpZ2h0LXNpZ25hdHVyZSE= v1,dGhpcy1pcy1ub3QtdGhlLXJpZ2h0LXNpZ25hdHVyZSE="
+        },
+        "body": "{\"id\":\"evt_01h455vb4pex5vsknk084sn02q\",\"type\":\"proposal.written\",\"created_at\":\"2026-11-09T15:00:00.000Z\",\"workspace_id\":\"ws_01h455vb4pex5vsknk084sn02q\",\"company_id\":\"co_01h455vb4pex5vsknk084sn02q\",\"data\":{\"proposal_id\":\"P-000042\",\"kind\":\"payment_out\",\"status\":\"written\",\"amount_tiyn\":1250000,\"onec_document_number\":\"00ЦБ-000042\"}}",
+        "now": 1793974568,
+        "expect": {
+          "valid": false,
+          "reason": "signature_mismatch"
+        }
+      },
+      {
+        "name": "signature header without a v1 entry",
+        "secret": "whsec_MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=",
+        "headers": {
+          "svix-id": "msg_2xyzExample123",
+          "svix-timestamp": "1793974568",
+          "svix-signature": "v2,ZRCt3+b69jHpabRApIIfKTd6llLmiFecNltLMFlNk/c="
+        },
+        "body": "{\"id\":\"evt_01h455vb4pex5vsknk084sn02q\",\"type\":\"proposal.written\",\"created_at\":\"2026-11-09T15:00:00.000Z\",\"workspace_id\":\"ws_01h455vb4pex5vsknk084sn02q\",\"company_id\":\"co_01h455vb4pex5vsknk084sn02q\",\"data\":{\"proposal_id\":\"P-000042\",\"kind\":\"payment_out\",\"status\":\"written\",\"amount_tiyn\":1250000,\"onec_document_number\":\"00ЦБ-000042\"}}",
+        "now": 1793974568,
+        "expect": {
+          "valid": false,
+          "reason": "signature_mismatch"
+        }
+      },
+      {
+        "name": "signature for another message id",
+        "secret": "whsec_MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=",
+        "headers": {
+          "svix-id": "msg_other",
+          "svix-timestamp": "1793974568",
+          "svix-signature": "v1,ZRCt3+b69jHpabRApIIfKTd6llLmiFecNltLMFlNk/c="
+        },
+        "body": "{\"id\":\"evt_01h455vb4pex5vsknk084sn02q\",\"type\":\"proposal.written\",\"created_at\":\"2026-11-09T15:00:00.000Z\",\"workspace_id\":\"ws_01h455vb4pex5vsknk084sn02q\",\"company_id\":\"co_01h455vb4pex5vsknk084sn02q\",\"data\":{\"proposal_id\":\"P-000042\",\"kind\":\"payment_out\",\"status\":\"written\",\"amount_tiyn\":1250000,\"onec_document_number\":\"00ЦБ-000042\"}}",
+        "now": 1793974568,
+        "expect": {
+          "valid": false,
+          "reason": "signature_mismatch"
+        }
+      },
+      {
+        "name": "empty secret",
+        "secret": "",
+        "headers": {
+          "svix-id": "msg_2xyzExample123",
+          "svix-timestamp": "1793974568",
+          "svix-signature": "v1,ZRCt3+b69jHpabRApIIfKTd6llLmiFecNltLMFlNk/c="
+        },
+        "body": "{\"id\":\"evt_01h455vb4pex5vsknk084sn02q\",\"type\":\"proposal.written\",\"created_at\":\"2026-11-09T15:00:00.000Z\",\"workspace_id\":\"ws_01h455vb4pex5vsknk084sn02q\",\"company_id\":\"co_01h455vb4pex5vsknk084sn02q\",\"data\":{\"proposal_id\":\"P-000042\",\"kind\":\"payment_out\",\"status\":\"written\",\"amount_tiyn\":1250000,\"onec_document_number\":\"00ЦБ-000042\"}}",
+        "now": 1793974568,
+        "expect": {
+          "valid": false,
+          "reason": "invalid_secret"
+        }
+      },
+      {
+        "name": "secret that is only the prefix",
+        "secret": "whsec_",
+        "headers": {
+          "svix-id": "msg_2xyzExample123",
+          "svix-timestamp": "1793974568",
+          "svix-signature": "v1,ZRCt3+b69jHpabRApIIfKTd6llLmiFecNltLMFlNk/c="
+        },
+        "body": "{\"id\":\"evt_01h455vb4pex5vsknk084sn02q\",\"type\":\"proposal.written\",\"created_at\":\"2026-11-09T15:00:00.000Z\",\"workspace_id\":\"ws_01h455vb4pex5vsknk084sn02q\",\"company_id\":\"co_01h455vb4pex5vsknk084sn02q\",\"data\":{\"proposal_id\":\"P-000042\",\"kind\":\"payment_out\",\"status\":\"written\",\"amount_tiyn\":1250000,\"onec_document_number\":\"00ЦБ-000042\"}}",
+        "now": 1793974568,
+        "expect": {
+          "valid": false,
+          "reason": "invalid_secret"
+        }
+      },
+      {
+        "name": "secret that is not base64",
+        "secret": "whsec_!!!not-base64!!!",
+        "headers": {
+          "svix-id": "msg_2xyzExample123",
+          "svix-timestamp": "1793974568",
+          "svix-signature": "v1,ZRCt3+b69jHpabRApIIfKTd6llLmiFecNltLMFlNk/c="
+        },
+        "body": "{\"id\":\"evt_01h455vb4pex5vsknk084sn02q\",\"type\":\"proposal.written\",\"created_at\":\"2026-11-09T15:00:00.000Z\",\"workspace_id\":\"ws_01h455vb4pex5vsknk084sn02q\",\"company_id\":\"co_01h455vb4pex5vsknk084sn02q\",\"data\":{\"proposal_id\":\"P-000042\",\"kind\":\"payment_out\",\"status\":\"written\",\"amount_tiyn\":1250000,\"onec_document_number\":\"00ЦБ-000042\"}}",
+        "now": 1793974568,
+        "expect": {
+          "valid": false,
+          "reason": "invalid_secret"
+        }
+      },
+      {
+        "name": "timestamp exactly at the old edge of the tolerance",
+        "secret": "whsec_MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=",
+        "headers": {
+          "svix-id": "msg_2xyzExample123",
+          "svix-timestamp": "1793974568",
+          "svix-signature": "v1,ZRCt3+b69jHpabRApIIfKTd6llLmiFecNltLMFlNk/c="
+        },
+        "body": "{\"id\":\"evt_01h455vb4pex5vsknk084sn02q\",\"type\":\"proposal.written\",\"created_at\":\"2026-11-09T15:00:00.000Z\",\"workspace_id\":\"ws_01h455vb4pex5vsknk084sn02q\",\"company_id\":\"co_01h455vb4pex5vsknk084sn02q\",\"data\":{\"proposal_id\":\"P-000042\",\"kind\":\"payment_out\",\"status\":\"written\",\"amount_tiyn\":1250000,\"onec_document_number\":\"00ЦБ-000042\"}}",
+        "now": 1793974868,
+        "expect": {
+          "valid": true,
+          "event_type": "proposal.written"
+        }
+      },
+      {
+        "name": "timestamp too old",
+        "secret": "whsec_MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=",
+        "headers": {
+          "svix-id": "msg_2xyzExample123",
+          "svix-timestamp": "1793974568",
+          "svix-signature": "v1,ZRCt3+b69jHpabRApIIfKTd6llLmiFecNltLMFlNk/c="
+        },
+        "body": "{\"id\":\"evt_01h455vb4pex5vsknk084sn02q\",\"type\":\"proposal.written\",\"created_at\":\"2026-11-09T15:00:00.000Z\",\"workspace_id\":\"ws_01h455vb4pex5vsknk084sn02q\",\"company_id\":\"co_01h455vb4pex5vsknk084sn02q\",\"data\":{\"proposal_id\":\"P-000042\",\"kind\":\"payment_out\",\"status\":\"written\",\"amount_tiyn\":1250000,\"onec_document_number\":\"00ЦБ-000042\"}}",
+        "now": 1793974869,
+        "expect": {
+          "valid": false,
+          "reason": "timestamp_too_old"
+        }
+      },
+      {
+        "name": "timestamp exactly at the future edge of the tolerance",
+        "secret": "whsec_MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=",
+        "headers": {
+          "svix-id": "msg_2xyzExample123",
+          "svix-timestamp": "1793974568",
+          "svix-signature": "v1,ZRCt3+b69jHpabRApIIfKTd6llLmiFecNltLMFlNk/c="
+        },
+        "body": "{\"id\":\"evt_01h455vb4pex5vsknk084sn02q\",\"type\":\"proposal.written\",\"created_at\":\"2026-11-09T15:00:00.000Z\",\"workspace_id\":\"ws_01h455vb4pex5vsknk084sn02q\",\"company_id\":\"co_01h455vb4pex5vsknk084sn02q\",\"data\":{\"proposal_id\":\"P-000042\",\"kind\":\"payment_out\",\"status\":\"written\",\"amount_tiyn\":1250000,\"onec_document_number\":\"00ЦБ-000042\"}}",
+        "now": 1793974268,
+        "expect": {
+          "valid": true,
+          "event_type": "proposal.written"
+        }
+      },
+      {
+        "name": "timestamp too new",
+        "secret": "whsec_MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=",
+        "headers": {
+          "svix-id": "msg_2xyzExample123",
+          "svix-timestamp": "1793974568",
+          "svix-signature": "v1,ZRCt3+b69jHpabRApIIfKTd6llLmiFecNltLMFlNk/c="
+        },
+        "body": "{\"id\":\"evt_01h455vb4pex5vsknk084sn02q\",\"type\":\"proposal.written\",\"created_at\":\"2026-11-09T15:00:00.000Z\",\"workspace_id\":\"ws_01h455vb4pex5vsknk084sn02q\",\"company_id\":\"co_01h455vb4pex5vsknk084sn02q\",\"data\":{\"proposal_id\":\"P-000042\",\"kind\":\"payment_out\",\"status\":\"written\",\"amount_tiyn\":1250000,\"onec_document_number\":\"00ЦБ-000042\"}}",
+        "now": 1793974267,
+        "expect": {
+          "valid": false,
+          "reason": "timestamp_too_new"
+        }
+      },
+      {
+        "name": "custom tolerance accepts an older message",
+        "secret": "whsec_MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=",
+        "headers": {
+          "svix-id": "msg_2xyzExample123",
+          "svix-timestamp": "1793974568",
+          "svix-signature": "v1,ZRCt3+b69jHpabRApIIfKTd6llLmiFecNltLMFlNk/c="
+        },
+        "body": "{\"id\":\"evt_01h455vb4pex5vsknk084sn02q\",\"type\":\"proposal.written\",\"created_at\":\"2026-11-09T15:00:00.000Z\",\"workspace_id\":\"ws_01h455vb4pex5vsknk084sn02q\",\"company_id\":\"co_01h455vb4pex5vsknk084sn02q\",\"data\":{\"proposal_id\":\"P-000042\",\"kind\":\"payment_out\",\"status\":\"written\",\"amount_tiyn\":1250000,\"onec_document_number\":\"00ЦБ-000042\"}}",
+        "now": 1793977568,
+        "tolerance_seconds": 3600,
+        "expect": {
+          "valid": true,
+          "event_type": "proposal.written"
+        }
+      },
+      {
+        "name": "custom tolerance still rejects beyond it",
+        "secret": "whsec_MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=",
+        "headers": {
+          "svix-id": "msg_2xyzExample123",
+          "svix-timestamp": "1793974568",
+          "svix-signature": "v1,ZRCt3+b69jHpabRApIIfKTd6llLmiFecNltLMFlNk/c="
+        },
+        "body": "{\"id\":\"evt_01h455vb4pex5vsknk084sn02q\",\"type\":\"proposal.written\",\"created_at\":\"2026-11-09T15:00:00.000Z\",\"workspace_id\":\"ws_01h455vb4pex5vsknk084sn02q\",\"company_id\":\"co_01h455vb4pex5vsknk084sn02q\",\"data\":{\"proposal_id\":\"P-000042\",\"kind\":\"payment_out\",\"status\":\"written\",\"amount_tiyn\":1250000,\"onec_document_number\":\"00ЦБ-000042\"}}",
+        "now": 1793978169,
+        "tolerance_seconds": 3600,
+        "expect": {
+          "valid": false,
+          "reason": "timestamp_too_old"
+        }
+      },
+      {
+        "name": "zero tolerance is a configuration error, not 'disabled'",
+        "secret": "whsec_MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=",
+        "headers": {
+          "svix-id": "msg_2xyzExample123",
+          "svix-timestamp": "1793974568",
+          "svix-signature": "v1,ZRCt3+b69jHpabRApIIfKTd6llLmiFecNltLMFlNk/c="
+        },
+        "body": "{\"id\":\"evt_01h455vb4pex5vsknk084sn02q\",\"type\":\"proposal.written\",\"created_at\":\"2026-11-09T15:00:00.000Z\",\"workspace_id\":\"ws_01h455vb4pex5vsknk084sn02q\",\"company_id\":\"co_01h455vb4pex5vsknk084sn02q\",\"data\":{\"proposal_id\":\"P-000042\",\"kind\":\"payment_out\",\"status\":\"written\",\"amount_tiyn\":1250000,\"onec_document_number\":\"00ЦБ-000042\"}}",
+        "now": 1793974568,
+        "tolerance_seconds": 0,
+        "expect": {
+          "valid": false,
+          "reason": "invalid_tolerance"
+        }
+      },
+      {
+        "name": "negative tolerance is a configuration error",
+        "secret": "whsec_MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=",
+        "headers": {
+          "svix-id": "msg_2xyzExample123",
+          "svix-timestamp": "1793974568",
+          "svix-signature": "v1,ZRCt3+b69jHpabRApIIfKTd6llLmiFecNltLMFlNk/c="
+        },
+        "body": "{\"id\":\"evt_01h455vb4pex5vsknk084sn02q\",\"type\":\"proposal.written\",\"created_at\":\"2026-11-09T15:00:00.000Z\",\"workspace_id\":\"ws_01h455vb4pex5vsknk084sn02q\",\"company_id\":\"co_01h455vb4pex5vsknk084sn02q\",\"data\":{\"proposal_id\":\"P-000042\",\"kind\":\"payment_out\",\"status\":\"written\",\"amount_tiyn\":1250000,\"onec_document_number\":\"00ЦБ-000042\"}}",
+        "now": 1793974568,
+        "tolerance_seconds": -1,
+        "expect": {
+          "valid": false,
+          "reason": "invalid_tolerance"
+        }
+      },
+      {
+        "name": "malformed timestamp: letters",
+        "secret": "whsec_MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=",
+        "headers": {
+          "svix-id": "msg_2xyzExample123",
+          "svix-timestamp": "abc",
+          "svix-signature": "v1,IznR02Q8PMa4T2ipr9NCnPd6aO/DS0mDfFoyU/lz384="
+        },
+        "body": "{\"id\":\"evt_01h455vb4pex5vsknk084sn02q\",\"type\":\"proposal.written\",\"created_at\":\"2026-11-09T15:00:00.000Z\",\"workspace_id\":\"ws_01h455vb4pex5vsknk084sn02q\",\"company_id\":\"co_01h455vb4pex5vsknk084sn02q\",\"data\":{\"proposal_id\":\"P-000042\",\"kind\":\"payment_out\",\"status\":\"written\",\"amount_tiyn\":1250000,\"onec_document_number\":\"00ЦБ-000042\"}}",
+        "now": 1793974568,
+        "expect": {
+          "valid": false,
+          "reason": "malformed_timestamp"
+        }
+      },
+      {
+        "name": "malformed timestamp: empty",
+        "secret": "whsec_MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=",
+        "headers": {
+          "svix-id": "msg_2xyzExample123",
+          "svix-timestamp": "",
+          "svix-signature": "v1,PxQJuEA0sWAGpiyjUHL644SBLaGc8su9U5zJjuGX2q4="
+        },
+        "body": "{\"id\":\"evt_01h455vb4pex5vsknk084sn02q\",\"type\":\"proposal.written\",\"created_at\":\"2026-11-09T15:00:00.000Z\",\"workspace_id\":\"ws_01h455vb4pex5vsknk084sn02q\",\"company_id\":\"co_01h455vb4pex5vsknk084sn02q\",\"data\":{\"proposal_id\":\"P-000042\",\"kind\":\"payment_out\",\"status\":\"written\",\"amount_tiyn\":1250000,\"onec_document_number\":\"00ЦБ-000042\"}}",
+        "now": 1793974568,
+        "expect": {
+          "valid": false,
+          "reason": "malformed_timestamp"
+        }
+      },
+      {
+        "name": "malformed timestamp: fractional",
+        "secret": "whsec_MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=",
+        "headers": {
+          "svix-id": "msg_2xyzExample123",
+          "svix-timestamp": "1793974568.5",
+          "svix-signature": "v1,yxvRXAN7qKZWp7Y7JtRwJzvDH0N8Y1BODQqvDxa0uxw="
+        },
+        "body": "{\"id\":\"evt_01h455vb4pex5vsknk084sn02q\",\"type\":\"proposal.written\",\"created_at\":\"2026-11-09T15:00:00.000Z\",\"workspace_id\":\"ws_01h455vb4pex5vsknk084sn02q\",\"company_id\":\"co_01h455vb4pex5vsknk084sn02q\",\"data\":{\"proposal_id\":\"P-000042\",\"kind\":\"payment_out\",\"status\":\"written\",\"amount_tiyn\":1250000,\"onec_document_number\":\"00ЦБ-000042\"}}",
+        "now": 1793974568,
+        "expect": {
+          "valid": false,
+          "reason": "malformed_timestamp"
+        }
+      },
+      {
+        "name": "missing signature header",
+        "secret": "whsec_MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=",
+        "headers": {
+          "svix-id": "msg_2xyzExample123",
+          "svix-timestamp": "1793974568"
+        },
+        "body": "{\"id\":\"evt_01h455vb4pex5vsknk084sn02q\",\"type\":\"proposal.written\",\"created_at\":\"2026-11-09T15:00:00.000Z\",\"workspace_id\":\"ws_01h455vb4pex5vsknk084sn02q\",\"company_id\":\"co_01h455vb4pex5vsknk084sn02q\",\"data\":{\"proposal_id\":\"P-000042\",\"kind\":\"payment_out\",\"status\":\"written\",\"amount_tiyn\":1250000,\"onec_document_number\":\"00ЦБ-000042\"}}",
+        "now": 1793974568,
+        "expect": {
+          "valid": false,
+          "reason": "missing_header"
+        }
+      },
+      {
+        "name": "missing id header",
+        "secret": "whsec_MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=",
+        "headers": {
+          "svix-timestamp": "1793974568",
+          "svix-signature": "v1,ZRCt3+b69jHpabRApIIfKTd6llLmiFecNltLMFlNk/c="
+        },
+        "body": "{\"id\":\"evt_01h455vb4pex5vsknk084sn02q\",\"type\":\"proposal.written\",\"created_at\":\"2026-11-09T15:00:00.000Z\",\"workspace_id\":\"ws_01h455vb4pex5vsknk084sn02q\",\"company_id\":\"co_01h455vb4pex5vsknk084sn02q\",\"data\":{\"proposal_id\":\"P-000042\",\"kind\":\"payment_out\",\"status\":\"written\",\"amount_tiyn\":1250000,\"onec_document_number\":\"00ЦБ-000042\"}}",
+        "now": 1793974568,
+        "expect": {
+          "valid": false,
+          "reason": "missing_header"
+        }
+      },
+      {
+        "name": "missing timestamp header",
+        "secret": "whsec_MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=",
+        "headers": {
+          "svix-id": "msg_2xyzExample123",
+          "svix-signature": "v1,ZRCt3+b69jHpabRApIIfKTd6llLmiFecNltLMFlNk/c="
+        },
+        "body": "{\"id\":\"evt_01h455vb4pex5vsknk084sn02q\",\"type\":\"proposal.written\",\"created_at\":\"2026-11-09T15:00:00.000Z\",\"workspace_id\":\"ws_01h455vb4pex5vsknk084sn02q\",\"company_id\":\"co_01h455vb4pex5vsknk084sn02q\",\"data\":{\"proposal_id\":\"P-000042\",\"kind\":\"payment_out\",\"status\":\"written\",\"amount_tiyn\":1250000,\"onec_document_number\":\"00ЦБ-000042\"}}",
+        "now": 1793974568,
+        "expect": {
+          "valid": false,
+          "reason": "missing_header"
+        }
+      },
+      {
+        "name": "no headers at all",
+        "secret": "whsec_MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=",
+        "headers": {},
+        "body": "{\"id\":\"evt_01h455vb4pex5vsknk084sn02q\",\"type\":\"proposal.written\",\"created_at\":\"2026-11-09T15:00:00.000Z\",\"workspace_id\":\"ws_01h455vb4pex5vsknk084sn02q\",\"company_id\":\"co_01h455vb4pex5vsknk084sn02q\",\"data\":{\"proposal_id\":\"P-000042\",\"kind\":\"payment_out\",\"status\":\"written\",\"amount_tiyn\":1250000,\"onec_document_number\":\"00ЦБ-000042\"}}",
+        "now": 1793974568,
+        "expect": {
+          "valid": false,
+          "reason": "missing_header"
+        }
       }
     ]
-  }
+  },
+  "hook_signature": {
+    "sign": [
+      {
+        "name": "JSON body",
+        "secret": "hksec_test_secret_key_for_hmac_256",
+        "body_base64": "eyJpZCI6Im9yZGVyXzE1MzIiLCJhbW91bnRfdGl5biI6NDUwMDAwMCwiY3VzdG9tZXJfYmluIjoiMTIzNDU2Nzg5MDEyIiwibm90ZSI6ItCe0L/Qu9Cw0YLQsCJ9",
+        "body": "{\"id\":\"order_1532\",\"amount_tiyn\":4500000,\"customer_bin\":\"123456789012\",\"note\":\"Оплата\"}",
+        "expect": {
+          "hex": "bce4cd92d9b7cdcc68390159bb7d2e81d679b1c2323794268e23dc3ba03b17f1",
+          "header": "sha256=bce4cd92d9b7cdcc68390159bb7d2e81d679b1c2323794268e23dc3ba03b17f1"
+        }
+      },
+      {
+        "name": "binary body",
+        "secret": "hksec_test_secret_key_for_hmac_256",
+        "body_base64": "AP/+DQqAfw==",
+        "expect": {
+          "hex": "54184ba55bdc706b7618b8a6ba8361d3741bb62c5dbbf5d8c6580616067282da",
+          "header": "sha256=54184ba55bdc706b7618b8a6ba8361d3741bb62c5dbbf5d8c6580616067282da"
+        }
+      },
+      {
+        "name": "empty body",
+        "secret": "hksec_test_secret_key_for_hmac_256",
+        "body_base64": "",
+        "body": "",
+        "expect": {
+          "hex": "d89f9909af3a4e643cab3dc0d426b636e5bfec7e6d6b314bb449a4adeb35f7b8",
+          "header": "sha256=d89f9909af3a4e643cab3dc0d426b636e5bfec7e6d6b314bb449a4adeb35f7b8"
+        }
+      },
+      {
+        "name": "empty secret is rejected",
+        "secret": "",
+        "body_base64": "eyJpZCI6Im9yZGVyXzE1MzIiLCJhbW91bnRfdGl5biI6NDUwMDAwMCwiY3VzdG9tZXJfYmluIjoiMTIzNDU2Nzg5MDEyIiwibm90ZSI6ItCe0L/Qu9Cw0YLQsCJ9",
+        "body": "{\"id\":\"order_1532\",\"amount_tiyn\":4500000,\"customer_bin\":\"123456789012\",\"note\":\"Оплата\"}",
+        "expect": {
+          "error": true
+        }
+      }
+    ],
+    "verify": [
+      {
+        "name": "lower-case hex",
+        "secret": "hksec_test_secret_key_for_hmac_256",
+        "body_base64": "eyJpZCI6Im9yZGVyXzE1MzIiLCJhbW91bnRfdGl5biI6NDUwMDAwMCwiY3VzdG9tZXJfYmluIjoiMTIzNDU2Nzg5MDEyIiwibm90ZSI6ItCe0L/Qu9Cw0YLQsCJ9",
+        "body": "{\"id\":\"order_1532\",\"amount_tiyn\":4500000,\"customer_bin\":\"123456789012\",\"note\":\"Оплата\"}",
+        "signature": "bce4cd92d9b7cdcc68390159bb7d2e81d679b1c2323794268e23dc3ba03b17f1",
+        "expect": {
+          "valid": true
+        }
+      },
+      {
+        "name": "upper-case hex",
+        "secret": "hksec_test_secret_key_for_hmac_256",
+        "body_base64": "eyJpZCI6Im9yZGVyXzE1MzIiLCJhbW91bnRfdGl5biI6NDUwMDAwMCwiY3VzdG9tZXJfYmluIjoiMTIzNDU2Nzg5MDEyIiwibm90ZSI6ItCe0L/Qu9Cw0YLQsCJ9",
+        "body": "{\"id\":\"order_1532\",\"amount_tiyn\":4500000,\"customer_bin\":\"123456789012\",\"note\":\"Оплата\"}",
+        "signature": "BCE4CD92D9B7CDCC68390159BB7D2E81D679B1C2323794268E23DC3BA03B17F1",
+        "expect": {
+          "valid": true
+        }
+      },
+      {
+        "name": "sha256= prefix, lower-case hex",
+        "secret": "hksec_test_secret_key_for_hmac_256",
+        "body_base64": "eyJpZCI6Im9yZGVyXzE1MzIiLCJhbW91bnRfdGl5biI6NDUwMDAwMCwiY3VzdG9tZXJfYmluIjoiMTIzNDU2Nzg5MDEyIiwibm90ZSI6ItCe0L/Qu9Cw0YLQsCJ9",
+        "body": "{\"id\":\"order_1532\",\"amount_tiyn\":4500000,\"customer_bin\":\"123456789012\",\"note\":\"Оплата\"}",
+        "signature": "sha256=bce4cd92d9b7cdcc68390159bb7d2e81d679b1c2323794268e23dc3ba03b17f1",
+        "expect": {
+          "valid": true
+        }
+      },
+      {
+        "name": "sha256= prefix, upper-case hex",
+        "secret": "hksec_test_secret_key_for_hmac_256",
+        "body_base64": "eyJpZCI6Im9yZGVyXzE1MzIiLCJhbW91bnRfdGl5biI6NDUwMDAwMCwiY3VzdG9tZXJfYmluIjoiMTIzNDU2Nzg5MDEyIiwibm90ZSI6ItCe0L/Qu9Cw0YLQsCJ9",
+        "body": "{\"id\":\"order_1532\",\"amount_tiyn\":4500000,\"customer_bin\":\"123456789012\",\"note\":\"Оплата\"}",
+        "signature": "sha256=BCE4CD92D9B7CDCC68390159BB7D2E81D679B1C2323794268E23DC3BA03B17F1",
+        "expect": {
+          "valid": true
+        }
+      },
+      {
+        "name": "binary body",
+        "secret": "hksec_test_secret_key_for_hmac_256",
+        "body_base64": "AP/+DQqAfw==",
+        "signature": "54184ba55bdc706b7618b8a6ba8361d3741bb62c5dbbf5d8c6580616067282da",
+        "expect": {
+          "valid": true
+        }
+      },
+      {
+        "name": "signature of another body",
+        "secret": "hksec_test_secret_key_for_hmac_256",
+        "body_base64": "eyJpZCI6Im9yZGVyXzE1MzIiLCJhbW91bnRfdGl5biI6NDUwMDAwMCwiY3VzdG9tZXJfYmluIjoiMTIzNDU2Nzg5MDEyIiwibm90ZSI6ItCe0L/Qu9Cw0YLQsCJ9",
+        "body": "{\"id\":\"order_1532\",\"amount_tiyn\":4500000,\"customer_bin\":\"123456789012\",\"note\":\"Оплата\"}",
+        "signature": "bdbc1a4fd829d70d9fee8697bc906dbf72bc06c923057b283523ba8c0ff31e50",
+        "expect": {
+          "valid": false
+        }
+      },
+      {
+        "name": "signature with another secret",
+        "secret": "hksec_test_secret_key_for_hmac_256",
+        "body_base64": "eyJpZCI6Im9yZGVyXzE1MzIiLCJhbW91bnRfdGl5biI6NDUwMDAwMCwiY3VzdG9tZXJfYmluIjoiMTIzNDU2Nzg5MDEyIiwibm90ZSI6ItCe0L/Qu9Cw0YLQsCJ9",
+        "body": "{\"id\":\"order_1532\",\"amount_tiyn\":4500000,\"customer_bin\":\"123456789012\",\"note\":\"Оплата\"}",
+        "signature": "099050b60927ed3452861f84299c1302190152dbc9692a3fd4bb00d61020b695",
+        "expect": {
+          "valid": false
+        }
+      },
+      {
+        "name": "truncated signature",
+        "secret": "hksec_test_secret_key_for_hmac_256",
+        "body_base64": "eyJpZCI6Im9yZGVyXzE1MzIiLCJhbW91bnRfdGl5biI6NDUwMDAwMCwiY3VzdG9tZXJfYmluIjoiMTIzNDU2Nzg5MDEyIiwibm90ZSI6ItCe0L/Qu9Cw0YLQsCJ9",
+        "body": "{\"id\":\"order_1532\",\"amount_tiyn\":4500000,\"customer_bin\":\"123456789012\",\"note\":\"Оплата\"}",
+        "signature": "bce4cd92d9b7cdcc68390159bb7d2e81d679b1c2323794268e23dc3ba03b17f",
+        "expect": {
+          "valid": false
+        }
+      },
+      {
+        "name": "signature that is not hex",
+        "secret": "hksec_test_secret_key_for_hmac_256",
+        "body_base64": "eyJpZCI6Im9yZGVyXzE1MzIiLCJhbW91bnRfdGl5biI6NDUwMDAwMCwiY3VzdG9tZXJfYmluIjoiMTIzNDU2Nzg5MDEyIiwibm90ZSI6ItCe0L/Qu9Cw0YLQsCJ9",
+        "body": "{\"id\":\"order_1532\",\"amount_tiyn\":4500000,\"customer_bin\":\"123456789012\",\"note\":\"Оплата\"}",
+        "signature": "zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz",
+        "expect": {
+          "valid": false
+        }
+      },
+      {
+        "name": "empty signature",
+        "secret": "hksec_test_secret_key_for_hmac_256",
+        "body_base64": "eyJpZCI6Im9yZGVyXzE1MzIiLCJhbW91bnRfdGl5biI6NDUwMDAwMCwiY3VzdG9tZXJfYmluIjoiMTIzNDU2Nzg5MDEyIiwibm90ZSI6ItCe0L/Qu9Cw0YLQsCJ9",
+        "body": "{\"id\":\"order_1532\",\"amount_tiyn\":4500000,\"customer_bin\":\"123456789012\",\"note\":\"Оплата\"}",
+        "signature": "",
+        "expect": {
+          "valid": false
+        }
+      },
+      {
+        "name": "empty secret is rejected even when the HMAC with an empty key matches",
+        "secret": "",
+        "body_base64": "eyJpZCI6Im9yZGVyXzE1MzIiLCJhbW91bnRfdGl5biI6NDUwMDAwMCwiY3VzdG9tZXJfYmluIjoiMTIzNDU2Nzg5MDEyIiwibm90ZSI6ItCe0L/Qu9Cw0YLQsCJ9",
+        "body": "{\"id\":\"order_1532\",\"amount_tiyn\":4500000,\"customer_bin\":\"123456789012\",\"note\":\"Оплата\"}",
+        "signature": "0ae531a86784cf60e4775f6e89847a9b3905fa8483f185b883f8827e36da4546",
+        "expect": {
+          "valid": false
+        }
+      }
+    ]
+  },
+  "money": {
+    "to_tiyn": [
+      {
+        "name": "'0'",
+        "input": "0",
+        "expect": {
+          "tiyn": "0"
+        }
+      },
+      {
+        "name": "'1.005'",
+        "input": "1.005",
+        "expect": {
+          "tiyn": "101"
+        }
+      },
+      {
+        "name": "'0.285'",
+        "input": "0.285",
+        "expect": {
+          "tiyn": "29"
+        }
+      },
+      {
+        "name": "'8.325'",
+        "input": "8.325",
+        "expect": {
+          "tiyn": "833"
+        }
+      },
+      {
+        "name": "'0.125'",
+        "input": "0.125",
+        "expect": {
+          "tiyn": "13"
+        }
+      },
+      {
+        "name": "'-1.005'",
+        "input": "-1.005",
+        "expect": {
+          "tiyn": "-101"
+        }
+      },
+      {
+        "name": "'45000'",
+        "input": "45000",
+        "expect": {
+          "tiyn": "4500000"
+        }
+      },
+      {
+        "name": "'0.29'",
+        "input": "0.29",
+        "expect": {
+          "tiyn": "29"
+        }
+      },
+      {
+        "name": "'45000.5'",
+        "input": "45000.5",
+        "expect": {
+          "tiyn": "4500050"
+        }
+      },
+      {
+        "name": "'120.00'",
+        "input": "120.00",
+        "expect": {
+          "tiyn": "12000"
+        }
+      },
+      {
+        "name": "'0.004'",
+        "input": "0.004",
+        "expect": {
+          "tiyn": "0"
+        }
+      },
+      {
+        "name": "'0.005'",
+        "input": "0.005",
+        "expect": {
+          "tiyn": "1"
+        }
+      },
+      {
+        "name": "'-0.004' rounds to zero, not minus zero",
+        "input": "-0.004",
+        "expect": {
+          "tiyn": "0"
+        }
+      },
+      {
+        "name": "'-0.005'",
+        "input": "-0.005",
+        "expect": {
+          "tiyn": "-1"
+        }
+      },
+      {
+        "name": "'-0'",
+        "input": "-0",
+        "expect": {
+          "tiyn": "0"
+        }
+      },
+      {
+        "name": "'007.10'",
+        "input": "007.10",
+        "expect": {
+          "tiyn": "710"
+        }
+      },
+      {
+        "name": "long fraction below the half",
+        "input": "1.0049999999999999999999999999",
+        "expect": {
+          "tiyn": "100"
+        }
+      },
+      {
+        "name": "long fraction above the half",
+        "input": "1.0050000000000000000000000001",
+        "expect": {
+          "tiyn": "101"
+        }
+      },
+      {
+        "name": "int64 max",
+        "input": "92233720368547758.07",
+        "expect": {
+          "tiyn": "9223372036854775807"
+        }
+      },
+      {
+        "name": "rounds down to int64 max",
+        "input": "92233720368547758.074",
+        "expect": {
+          "tiyn": "9223372036854775807"
+        }
+      },
+      {
+        "name": "int64 min",
+        "input": "-92233720368547758.08",
+        "expect": {
+          "tiyn": "-9223372036854775808"
+        }
+      },
+      {
+        "name": "rounds up to int64 min",
+        "input": "-92233720368547758.084",
+        "expect": {
+          "tiyn": "-9223372036854775808"
+        }
+      },
+      {
+        "name": "overflow by rounding",
+        "input": "92233720368547758.075",
+        "expect": {
+          "error": true
+        }
+      },
+      {
+        "name": "overflow by one tiyn",
+        "input": "92233720368547758.08",
+        "expect": {
+          "error": true
+        }
+      },
+      {
+        "name": "negative overflow by rounding",
+        "input": "-92233720368547758.085",
+        "expect": {
+          "error": true
+        }
+      },
+      {
+        "name": "overflow, large integer",
+        "input": "100000000000000000000",
+        "expect": {
+          "error": true
+        }
+      },
+      {
+        "name": "'abc'",
+        "input": "abc",
+        "expect": {
+          "error": true
+        }
+      },
+      {
+        "name": "empty string",
+        "input": "",
+        "expect": {
+          "error": true
+        }
+      },
+      {
+        "name": "'NaN'",
+        "input": "NaN",
+        "expect": {
+          "error": true
+        }
+      },
+      {
+        "name": "'Infinity'",
+        "input": "Infinity",
+        "expect": {
+          "error": true
+        }
+      },
+      {
+        "name": "'-Infinity'",
+        "input": "-Infinity",
+        "expect": {
+          "error": true
+        }
+      },
+      {
+        "name": "exponent notation is not accepted",
+        "input": "1e3",
+        "expect": {
+          "error": true
+        }
+      },
+      {
+        "name": "leading space",
+        "input": " 1",
+        "expect": {
+          "error": true
+        }
+      },
+      {
+        "name": "trailing space",
+        "input": "1 ",
+        "expect": {
+          "error": true
+        }
+      },
+      {
+        "name": "trailing newline",
+        "input": "1\n",
+        "expect": {
+          "error": true
+        }
+      },
+      {
+        "name": "comma decimal separator",
+        "input": "1,5",
+        "expect": {
+          "error": true
+        }
+      },
+      {
+        "name": "no digits after the point",
+        "input": "1.",
+        "expect": {
+          "error": true
+        }
+      },
+      {
+        "name": "no digits before the point",
+        "input": ".5",
+        "expect": {
+          "error": true
+        }
+      },
+      {
+        "name": "explicit plus sign",
+        "input": "+1",
+        "expect": {
+          "error": true
+        }
+      },
+      {
+        "name": "'--1'",
+        "input": "--1",
+        "expect": {
+          "error": true
+        }
+      },
+      {
+        "name": "'1.2.3'",
+        "input": "1.2.3",
+        "expect": {
+          "error": true
+        }
+      },
+      {
+        "name": "thousands separator",
+        "input": "1 000",
+        "expect": {
+          "error": true
+        }
+      },
+      {
+        "name": "non-ASCII digits",
+        "input": "١٢",
+        "expect": {
+          "error": true
+        }
+      },
+      {
+        "name": "'0x10'",
+        "input": "0x10",
+        "expect": {
+          "error": true
+        }
+      },
+      {
+        "name": "sign only",
+        "input": "-",
+        "expect": {
+          "error": true
+        }
+      }
+    ],
+    "to_tiyn_float": [
+      {
+        "name": "1.005",
+        "input": 1.005,
+        "expect": {
+          "tiyn": "101"
+        }
+      },
+      {
+        "name": "0.285",
+        "input": 0.285,
+        "expect": {
+          "tiyn": "29"
+        }
+      },
+      {
+        "name": "8.325",
+        "input": 8.325,
+        "expect": {
+          "tiyn": "833"
+        }
+      },
+      {
+        "name": "0.125",
+        "input": 0.125,
+        "expect": {
+          "tiyn": "13"
+        }
+      },
+      {
+        "name": "-1.005",
+        "input": -1.005,
+        "expect": {
+          "tiyn": "-101"
+        }
+      },
+      {
+        "name": "45000.5",
+        "input": 45000.5,
+        "expect": {
+          "tiyn": "4500050"
+        }
+      },
+      {
+        "name": "0.29",
+        "input": 0.29,
+        "expect": {
+          "tiyn": "29"
+        }
+      },
+      {
+        "name": "0.0",
+        "input": 0.0,
+        "expect": {
+          "tiyn": "0"
+        }
+      },
+      {
+        "name": "0.1 + 0.2",
+        "input": 0.30000000000000004,
+        "expect": {
+          "tiyn": "30"
+        }
+      },
+      {
+        "name": "123456789.125",
+        "input": 123456789.125,
+        "expect": {
+          "tiyn": "12345678913"
+        }
+      },
+      {
+        "name": "4.35",
+        "input": 4.35,
+        "expect": {
+          "tiyn": "435"
+        }
+      },
+      {
+        "name": "1.115",
+        "input": 1.115,
+        "expect": {
+          "tiyn": "112"
+        }
+      },
+      {
+        "name": "2.675",
+        "input": 2.675,
+        "expect": {
+          "tiyn": "268"
+        }
+      },
+      {
+        "name": "-0.004",
+        "input": -0.004,
+        "expect": {
+          "tiyn": "0"
+        }
+      },
+      {
+        "name": "overflow",
+        "input": 1e+21,
+        "expect": {
+          "error": true
+        }
+      },
+      {
+        "name": "negative overflow",
+        "input": -1e+21,
+        "expect": {
+          "error": true
+        }
+      },
+      {
+        "name": "just above int64 max tiyn",
+        "input": 9.223372036854776e+16,
+        "expect": {
+          "error": true
+        }
+      },
+      {
+        "name": "NaN",
+        "special": "NaN",
+        "expect": {
+          "error": true
+        }
+      },
+      {
+        "name": "+Infinity",
+        "special": "Infinity",
+        "expect": {
+          "error": true
+        }
+      },
+      {
+        "name": "-Infinity",
+        "special": "-Infinity",
+        "expect": {
+          "error": true
+        }
+      }
+    ],
+    "format_tiyn": [
+      {
+        "name": "0",
+        "tiyn": "0",
+        "expect": {
+          "text": "0,00 ₸"
+        }
+      },
+      {
+        "name": "5",
+        "tiyn": "5",
+        "expect": {
+          "text": "0,05 ₸"
+        }
+      },
+      {
+        "name": "-5",
+        "tiyn": "-5",
+        "expect": {
+          "text": "-0,05 ₸"
+        }
+      },
+      {
+        "name": "-50",
+        "tiyn": "-50",
+        "expect": {
+          "text": "-0,50 ₸"
+        }
+      },
+      {
+        "name": "99",
+        "tiyn": "99",
+        "expect": {
+          "text": "0,99 ₸"
+        }
+      },
+      {
+        "name": "100",
+        "tiyn": "100",
+        "expect": {
+          "text": "1,00 ₸"
+        }
+      },
+      {
+        "name": "12000",
+        "tiyn": "12000",
+        "expect": {
+          "text": "120,00 ₸"
+        }
+      },
+      {
+        "name": "4500000",
+        "tiyn": "4500000",
+        "expect": {
+          "text": "45 000,00 ₸"
+        }
+      },
+      {
+        "name": "4500050",
+        "tiyn": "4500050",
+        "expect": {
+          "text": "45 000,50 ₸"
+        }
+      },
+      {
+        "name": "-4500050",
+        "tiyn": "-4500050",
+        "expect": {
+          "text": "-45 000,50 ₸"
+        }
+      },
+      {
+        "name": "99999",
+        "tiyn": "99999",
+        "expect": {
+          "text": "999,99 ₸"
+        }
+      },
+      {
+        "name": "100000",
+        "tiyn": "100000",
+        "expect": {
+          "text": "1 000,00 ₸"
+        }
+      },
+      {
+        "name": "123456789",
+        "tiyn": "123456789",
+        "expect": {
+          "text": "1 234 567,89 ₸"
+        }
+      },
+      {
+        "name": "int64 max",
+        "tiyn": "9223372036854775807",
+        "expect": {
+          "text": "92 233 720 368 547 758,07 ₸"
+        }
+      },
+      {
+        "name": "int64 min",
+        "tiyn": "-9223372036854775808",
+        "expect": {
+          "text": "-92 233 720 368 547 758,08 ₸"
+        }
+      },
+      {
+        "name": "4500000 KZT",
+        "tiyn": "4500000",
+        "currency": "KZT",
+        "expect": {
+          "text": "45 000,00 ₸"
+        }
+      },
+      {
+        "name": "4500000 kzt",
+        "tiyn": "4500000",
+        "currency": "kzt",
+        "expect": {
+          "text": "45 000,00 ₸"
+        }
+      },
+      {
+        "name": "123456 GBP",
+        "tiyn": "123456",
+        "currency": "GBP",
+        "expect": {
+          "text": "1 234,56 GBP"
+        }
+      },
+      {
+        "name": "123456 gbp",
+        "tiyn": "123456",
+        "currency": "gbp",
+        "expect": {
+          "text": "1 234,56 GBP"
+        }
+      },
+      {
+        "name": "-50 GBP",
+        "tiyn": "-50",
+        "currency": "GBP",
+        "expect": {
+          "text": "-0,50 GBP"
+        }
+      },
+      {
+        "name": "123456 USD",
+        "tiyn": "123456",
+        "currency": "USD",
+        "expect": {
+          "text": "1 234,56 $"
+        }
+      },
+      {
+        "name": "123456 EUR",
+        "tiyn": "123456",
+        "currency": "EUR",
+        "expect": {
+          "text": "1 234,56 €"
+        }
+      },
+      {
+        "name": "123456 RUB",
+        "tiyn": "123456",
+        "currency": "RUB",
+        "expect": {
+          "text": "1 234,56 ₽"
+        }
+      },
+      {
+        "name": "0 XTS",
+        "tiyn": "0",
+        "currency": "XTS",
+        "expect": {
+          "text": "0,00 XTS"
+        }
+      }
+    ]
+  },
+  "bin_iin": [
+    {
+      "name": "all zeros",
+      "input": "000000000000",
+      "expect": {
+        "valid": true
+      }
+    },
+    {
+      "name": "valid, first-pass check digit",
+      "input": "990140000017",
+      "expect": {
+        "valid": true
+      }
+    },
+    {
+      "name": "valid",
+      "input": "991140000015",
+      "expect": {
+        "valid": true
+      }
+    },
+    {
+      "name": "valid, second-pass weights",
+      "input": "990140000806",
+      "expect": {
+        "valid": true
+      }
+    },
+    {
+      "name": "no valid check digit exists (both passes give 10)",
+      "input": "990140000820",
+      "expect": {
+        "valid": false
+      }
+    },
+    {
+      "name": "wrong check digit",
+      "input": "990140000016",
+      "expect": {
+        "valid": false
+      }
+    },
+    {
+      "name": "11 digits",
+      "input": "99014000001",
+      "expect": {
+        "valid": false
+      }
+    },
+    {
+      "name": "13 digits",
+      "input": "9901400000170",
+      "expect": {
+        "valid": false
+      }
+    },
+    {
+      "name": "too short",
+      "input": "12345",
+      "expect": {
+        "valid": false
+      }
+    },
+    {
+      "name": "empty",
+      "input": "",
+      "expect": {
+        "valid": false
+      }
+    },
+    {
+      "name": "letter inside",
+      "input": "99014000001A",
+      "expect": {
+        "valid": false
+      }
+    },
+    {
+      "name": "trailing newline",
+      "input": "990140000017\n",
+      "expect": {
+        "valid": false
+      }
+    },
+    {
+      "name": "leading space",
+      "input": " 990140000017",
+      "expect": {
+        "valid": false
+      }
+    },
+    {
+      "name": "trailing space",
+      "input": "990140000017 ",
+      "expect": {
+        "valid": false
+      }
+    },
+    {
+      "name": "Arabic-Indic digits",
+      "input": "٠٠٠٠٠٠٠٠٠٠٠٠",
+      "expect": {
+        "valid": false
+      }
+    },
+    {
+      "name": "full-width digits",
+      "input": "００００００００００００",
+      "expect": {
+        "valid": false
+      }
+    },
+    {
+      "name": "12 characters with a non-ASCII digit",
+      "input": "99014000001٧",
+      "expect": {
+        "valid": false
+      }
+    },
+    {
+      "name": "embedded dash",
+      "input": "990140-00017",
+      "expect": {
+        "valid": false
+      }
+    }
+  ],
+  "errors": {
+    "cases": [
+      {
+        "name": "402 with a code",
+        "status": 402,
+        "headers": {},
+        "body": "{\"type\":\"error\",\"error\":{\"type\":\"payment_required_error\",\"message\":\"Баланс платформы исчерпан — пополните счёт в кабинете.\",\"code\":\"platform_balance_exhausted\"},\"request_id\":\"req_4f9c2a7e1b3d4c5a8e6f7a9b0c1d2e3f\"}",
+        "expect": {
+          "envelope": true,
+          "class": "payment_required_error",
+          "type": "payment_required_error",
+          "code": "platform_balance_exhausted",
+          "message": "Баланс платформы исчерпан — пополните счёт в кабинете.",
+          "request_id": "req_4f9c2a7e1b3d4c5a8e6f7a9b0c1d2e3f",
+          "retry_after": null,
+          "fields": [],
+          "extra": {}
+        }
+      },
+      {
+        "name": "429 rate limit with Retry-After",
+        "status": 429,
+        "headers": {
+          "Retry-After": "7",
+          "x-request-id": "req_4f9c2a7e1b3d4c5a8e6f7a9b0c1d2e3f",
+          "x-ratelimit-limit": "60",
+          "x-ratelimit-remaining": "0",
+          "x-ratelimit-reset": "7"
+        },
+        "body": "{\"type\":\"error\",\"error\":{\"type\":\"limit_error\",\"message\":\"Слишком много запросов по этому ключу API — подождите немного\",\"code\":\"rate_limited\"},\"request_id\":\"req_4f9c2a7e1b3d4c5a8e6f7a9b0c1d2e3f\"}",
+        "expect": {
+          "envelope": true,
+          "class": "limit_error",
+          "type": "limit_error",
+          "code": "rate_limited",
+          "message": "Слишком много запросов по этому ключу API — подождите немного",
+          "request_id": "req_4f9c2a7e1b3d4c5a8e6f7a9b0c1d2e3f",
+          "retry_after": 7,
+          "fields": [],
+          "extra": {}
+        }
+      },
+      {
+        "name": "429 plan limit with resets_at",
+        "status": 429,
+        "headers": {
+          "retry-after": "3600"
+        },
+        "body": "{\"type\":\"error\",\"error\":{\"type\":\"limit_error\",\"message\":\"Лимит тарифа исчерпан до конца окна.\",\"code\":\"plan_limit_reached\",\"resets_at\":\"2026-11-09T18:00:00.000Z\"},\"request_id\":\"req_4f9c2a7e1b3d4c5a8e6f7a9b0c1d2e3f\"}",
+        "expect": {
+          "envelope": true,
+          "class": "limit_error",
+          "type": "limit_error",
+          "code": "plan_limit_reached",
+          "message": "Лимит тарифа исчерпан до конца окна.",
+          "request_id": "req_4f9c2a7e1b3d4c5a8e6f7a9b0c1d2e3f",
+          "retry_after": 3600,
+          "fields": [],
+          "extra": {
+            "resets_at": "2026-11-09T18:00:00.000Z"
+          }
+        }
+      },
+      {
+        "name": "400 validation_failed with fields",
+        "status": 400,
+        "headers": {},
+        "body": "{\"type\":\"error\",\"error\":{\"type\":\"invalid_request_error\",\"message\":\"Проверьте поля запроса.\",\"code\":\"validation_failed\",\"fields\":[{\"path\":\"bin\",\"code\":\"invalid_format\",\"message\":\"БИН/ИИН — 12 цифр\"},{\"path\":\"lines.0.amount\",\"code\":\"too_small\",\"message\":\"Сумма должна быть больше нуля\"},{\"path\":\"\",\"code\":\"unrecognized_keys\",\"message\":\"Лишние поля: foo\"}]},\"request_id\":\"req_4f9c2a7e1b3d4c5a8e6f7a9b0c1d2e3f\"}",
+        "expect": {
+          "envelope": true,
+          "class": "invalid_request_error",
+          "type": "invalid_request_error",
+          "code": "validation_failed",
+          "message": "Проверьте поля запроса.",
+          "request_id": "req_4f9c2a7e1b3d4c5a8e6f7a9b0c1d2e3f",
+          "retry_after": null,
+          "fields": [
+            {
+              "path": "bin",
+              "code": "invalid_format",
+              "message": "БИН/ИИН — 12 цифр"
+            },
+            {
+              "path": "lines.0.amount",
+              "code": "too_small",
+              "message": "Сумма должна быть больше нуля"
+            },
+            {
+              "path": "",
+              "code": "unrecognized_keys",
+              "message": "Лишние поля: foo"
+            }
+          ],
+          "extra": {}
+        }
+      },
+      {
+        "name": "403 missing_permission with extra properties",
+        "status": 403,
+        "headers": {},
+        "body": "{\"type\":\"error\",\"error\":{\"type\":\"permission_error\",\"message\":\"Не хватает права chat.use — обратитесь к администратору организации.\",\"code\":\"missing_permission\",\"permission\":\"chat.use\"},\"request_id\":\"req_4f9c2a7e1b3d4c5a8e6f7a9b0c1d2e3f\"}",
+        "expect": {
+          "envelope": true,
+          "class": "permission_error",
+          "type": "permission_error",
+          "code": "missing_permission",
+          "message": "Не хватает права chat.use — обратитесь к администратору организации.",
+          "request_id": "req_4f9c2a7e1b3d4c5a8e6f7a9b0c1d2e3f",
+          "retry_after": null,
+          "fields": [],
+          "extra": {
+            "permission": "chat.use"
+          }
+        }
+      },
+      {
+        "name": "404 without a code; request_id null in the body, taken from the header",
+        "status": 404,
+        "headers": {
+          "X-Request-Id": "req_from_header_0001"
+        },
+        "body": "{\"type\":\"error\",\"error\":{\"type\":\"not_found_error\",\"message\":\"Компания не найдена.\"},\"request_id\":null}",
+        "expect": {
+          "envelope": true,
+          "class": "not_found_error",
+          "type": "not_found_error",
+          "code": null,
+          "message": "Компания не найдена.",
+          "request_id": "req_from_header_0001",
+          "retry_after": null,
+          "fields": [],
+          "extra": {}
+        }
+      },
+      {
+        "name": "413 is chosen by error.type, not by status",
+        "status": 413,
+        "headers": {},
+        "body": "{\"type\":\"error\",\"error\":{\"type\":\"invalid_request_error\",\"message\":\"Тело запроса слишком большое.\",\"code\":\"body_too_large\"},\"request_id\":\"req_4f9c2a7e1b3d4c5a8e6f7a9b0c1d2e3f\"}",
+        "expect": {
+          "envelope": true,
+          "class": "invalid_request_error",
+          "type": "invalid_request_error",
+          "code": "body_too_large",
+          "message": "Тело запроса слишком большое.",
+          "request_id": "req_4f9c2a7e1b3d4c5a8e6f7a9b0c1d2e3f",
+          "retry_after": null,
+          "fields": [],
+          "extra": {}
+        }
+      },
+      {
+        "name": "503 unavailable with Retry-After",
+        "status": 503,
+        "headers": {
+          "Retry-After": "2"
+        },
+        "body": "{\"type\":\"error\",\"error\":{\"type\":\"unavailable_error\",\"message\":\"Проверка 1С уже идёт — повторите позже.\",\"code\":\"onec_check_busy\"},\"request_id\":\"req_4f9c2a7e1b3d4c5a8e6f7a9b0c1d2e3f\"}",
+        "expect": {
+          "envelope": true,
+          "class": "unavailable_error",
+          "type": "unavailable_error",
+          "code": "onec_check_busy",
+          "message": "Проверка 1С уже идёт — повторите позже.",
+          "request_id": "req_4f9c2a7e1b3d4c5a8e6f7a9b0c1d2e3f",
+          "retry_after": 2,
+          "fields": [],
+          "extra": {}
+        }
+      },
+      {
+        "name": "unknown error.type from a newer backend: type kept, class by status",
+        "status": 409,
+        "headers": {},
+        "body": "{\"type\":\"error\",\"error\":{\"type\":\"quantum_error\",\"message\":\"Новое состояние.\",\"code\":\"entangled\",\"limit_kind\":\"day\"},\"request_id\":\"req_4f9c2a7e1b3d4c5a8e6f7a9b0c1d2e3f\"}",
+        "expect": {
+          "envelope": true,
+          "class": "conflict_error",
+          "type": "quantum_error",
+          "code": "entangled",
+          "message": "Новое состояние.",
+          "request_id": "req_4f9c2a7e1b3d4c5a8e6f7a9b0c1d2e3f",
+          "retry_after": null,
+          "fields": [],
+          "extra": {
+            "limit_kind": "day"
+          }
+        }
+      },
+      {
+        "name": "envelope without the required request_id property (tolerant parsing)",
+        "status": 404,
+        "headers": {
+          "x-request-id": "req_from_header_0002"
+        },
+        "body": "{\"type\":\"error\",\"error\":{\"type\":\"not_found_error\",\"message\":\"Предложение не найдено.\"}}",
+        "contract_valid": false,
+        "expect": {
+          "envelope": true,
+          "class": "not_found_error",
+          "type": "not_found_error",
+          "code": null,
+          "message": "Предложение не найдено.",
+          "request_id": "req_from_header_0002",
+          "retry_after": null,
+          "fields": [],
+          "extra": {}
+        }
+      },
+      {
+        "name": "502 HTML body from a proxy",
+        "status": 502,
+        "headers": {
+          "content-type": "text/html",
+          "x-request-id": "req_edge_502"
+        },
+        "body": "<html>\r\n<head><title>502 Bad Gateway</title></head>\r\n<body>\r\n<center><h1>502 Bad Gateway</h1></center>\r\n<hr><center>cloudflare</center>\r\n</body>\r\n</html>\r\n",
+        "expect": {
+          "envelope": false,
+          "class": "unavailable_error",
+          "type": "unavailable_error",
+          "code": null,
+          "request_id": "req_edge_502",
+          "retry_after": null,
+          "fields": [],
+          "extra": {}
+        }
+      },
+      {
+        "name": "500 empty body",
+        "status": 500,
+        "headers": {},
+        "body": "",
+        "expect": {
+          "envelope": false,
+          "class": "api_error",
+          "type": "api_error",
+          "code": null,
+          "request_id": null,
+          "retry_after": null,
+          "fields": [],
+          "extra": {}
+        }
+      },
+      {
+        "name": "404 JSON that is not the envelope",
+        "status": 404,
+        "headers": {},
+        "body": "{\"message\":\"Not Found\"}",
+        "expect": {
+          "envelope": false,
+          "class": "not_found_error",
+          "type": "not_found_error",
+          "code": null,
+          "request_id": null,
+          "retry_after": null,
+          "fields": [],
+          "extra": {}
+        }
+      },
+      {
+        "name": "401 truncated JSON",
+        "status": 401,
+        "headers": {},
+        "body": "{\"type\":\"error\",\"error\":{\"type\":\"authentication_er",
+        "expect": {
+          "envelope": false,
+          "class": "authentication_error",
+          "type": "authentication_error",
+          "code": null,
+          "request_id": null,
+          "retry_after": null,
+          "fields": [],
+          "extra": {}
+        }
+      },
+      {
+        "name": "400 JSON array body",
+        "status": 400,
+        "headers": {},
+        "body": "[]",
+        "expect": {
+          "envelope": false,
+          "class": "invalid_request_error",
+          "type": "invalid_request_error",
+          "code": null,
+          "request_id": null,
+          "retry_after": null,
+          "fields": [],
+          "extra": {}
+        }
+      },
+      {
+        "name": "envelope whose error is not an object",
+        "status": 500,
+        "headers": {},
+        "body": "{\"type\":\"error\",\"error\":\"boom\",\"request_id\":null}",
+        "expect": {
+          "envelope": false,
+          "class": "api_error",
+          "type": "api_error",
+          "code": null,
+          "request_id": null,
+          "retry_after": null,
+          "fields": [],
+          "extra": {}
+        }
+      }
+    ],
+    "status_fallback": [
+      {
+        "status": 400,
+        "expect": {
+          "type": "invalid_request_error"
+        }
+      },
+      {
+        "status": 401,
+        "expect": {
+          "type": "authentication_error"
+        }
+      },
+      {
+        "status": 402,
+        "expect": {
+          "type": "payment_required_error"
+        }
+      },
+      {
+        "status": 403,
+        "expect": {
+          "type": "permission_error"
+        }
+      },
+      {
+        "status": 404,
+        "expect": {
+          "type": "not_found_error"
+        }
+      },
+      {
+        "status": 405,
+        "expect": {
+          "type": "invalid_request_error"
+        }
+      },
+      {
+        "status": 408,
+        "expect": {
+          "type": "invalid_request_error"
+        }
+      },
+      {
+        "status": 409,
+        "expect": {
+          "type": "conflict_error"
+        }
+      },
+      {
+        "status": 410,
+        "expect": {
+          "type": "gone_error"
+        }
+      },
+      {
+        "status": 413,
+        "expect": {
+          "type": "invalid_request_error"
+        }
+      },
+      {
+        "status": 418,
+        "expect": {
+          "type": "invalid_request_error"
+        }
+      },
+      {
+        "status": 422,
+        "expect": {
+          "type": "invalid_request_error"
+        }
+      },
+      {
+        "status": 429,
+        "expect": {
+          "type": "limit_error"
+        }
+      },
+      {
+        "status": 500,
+        "expect": {
+          "type": "api_error"
+        }
+      },
+      {
+        "status": 501,
+        "expect": {
+          "type": "api_error"
+        }
+      },
+      {
+        "status": 502,
+        "expect": {
+          "type": "unavailable_error"
+        }
+      },
+      {
+        "status": 503,
+        "expect": {
+          "type": "unavailable_error"
+        }
+      },
+      {
+        "status": 504,
+        "expect": {
+          "type": "unavailable_error"
+        }
+      },
+      {
+        "status": 599,
+        "expect": {
+          "type": "api_error"
+        }
+      }
+    ]
+  },
+  "retry_after": {
+    "max_sleep_seconds": 60,
+    "cases": [
+      {
+        "name": "integer seconds",
+        "headers": {
+          "Retry-After": "2"
+        },
+        "now": "2026-11-09T15:00:00Z",
+        "expect": {
+          "seconds": 2,
+          "sleep": true
+        }
+      },
+      {
+        "name": "zero",
+        "headers": {
+          "Retry-After": "0"
+        },
+        "now": "2026-11-09T15:00:00Z",
+        "expect": {
+          "seconds": 0,
+          "sleep": true
+        }
+      },
+      {
+        "name": "fractional seconds",
+        "headers": {
+          "Retry-After": "1.5"
+        },
+        "now": "2026-11-09T15:00:00Z",
+        "expect": {
+          "seconds": 1.5,
+          "sleep": true
+        }
+      },
+      {
+        "name": "lower-case header name",
+        "headers": {
+          "retry-after": "3"
+        },
+        "now": "2026-11-09T15:00:00Z",
+        "expect": {
+          "seconds": 3,
+          "sleep": true
+        }
+      },
+      {
+        "name": "HTTP-date 10 s ahead of now",
+        "headers": {
+          "Retry-After": "Mon, 09 Nov 2026 15:00:10 GMT"
+        },
+        "now": "2026-11-09T15:00:00Z",
+        "expect": {
+          "seconds": 10,
+          "sleep": true
+        }
+      },
+      {
+        "name": "HTTP-date in the past",
+        "headers": {
+          "Retry-After": "Mon, 09 Nov 2026 14:59:00 GMT"
+        },
+        "now": "2026-11-09T15:00:00Z",
+        "expect": {
+          "seconds": 0,
+          "sleep": true
+        }
+      },
+      {
+        "name": "HTTP-date more than 60 s ahead",
+        "headers": {
+          "Retry-After": "Mon, 09 Nov 2026 15:02:00 GMT"
+        },
+        "now": "2026-11-09T15:00:00Z",
+        "expect": {
+          "seconds": 120,
+          "sleep": false
+        }
+      },
+      {
+        "name": "retry-after-ms",
+        "headers": {
+          "retry-after-ms": "1500"
+        },
+        "now": "2026-11-09T15:00:00Z",
+        "expect": {
+          "seconds": 1.5,
+          "sleep": true
+        }
+      },
+      {
+        "name": "retry-after-ms wins over Retry-After",
+        "headers": {
+          "retry-after-ms": "250",
+          "Retry-After": "30"
+        },
+        "now": "2026-11-09T15:00:00Z",
+        "expect": {
+          "seconds": 0.25,
+          "sleep": true
+        }
+      },
+      {
+        "name": "malformed retry-after-ms falls back to Retry-After",
+        "headers": {
+          "retry-after-ms": "soon",
+          "Retry-After": "4"
+        },
+        "now": "2026-11-09T15:00:00Z",
+        "expect": {
+          "seconds": 4,
+          "sleep": true
+        }
+      },
+      {
+        "name": "exactly 60 s is still slept",
+        "headers": {
+          "Retry-After": "60"
+        },
+        "now": "2026-11-09T15:00:00Z",
+        "expect": {
+          "seconds": 60,
+          "sleep": true
+        }
+      },
+      {
+        "name": "above 60 s: do not sleep, raise with retry_after",
+        "headers": {
+          "Retry-After": "61"
+        },
+        "now": "2026-11-09T15:00:00Z",
+        "expect": {
+          "seconds": 61,
+          "sleep": false
+        }
+      },
+      {
+        "name": "120 s",
+        "headers": {
+          "Retry-After": "120"
+        },
+        "now": "2026-11-09T15:00:00Z",
+        "expect": {
+          "seconds": 120,
+          "sleep": false
+        }
+      },
+      {
+        "name": "retry-after-ms above 60 s",
+        "headers": {
+          "retry-after-ms": "60001"
+        },
+        "now": "2026-11-09T15:00:00Z",
+        "expect": {
+          "seconds": 60.001,
+          "sleep": false
+        }
+      },
+      {
+        "name": "garbage: use the computed backoff",
+        "headers": {
+          "Retry-After": "soon"
+        },
+        "now": "2026-11-09T15:00:00Z",
+        "expect": {
+          "seconds": null,
+          "sleep": true
+        }
+      },
+      {
+        "name": "negative: use the computed backoff",
+        "headers": {
+          "Retry-After": "-5"
+        },
+        "now": "2026-11-09T15:00:00Z",
+        "expect": {
+          "seconds": null,
+          "sleep": true
+        }
+      },
+      {
+        "name": "empty: use the computed backoff",
+        "headers": {
+          "Retry-After": ""
+        },
+        "now": "2026-11-09T15:00:00Z",
+        "expect": {
+          "seconds": null,
+          "sleep": true
+        }
+      },
+      {
+        "name": "no header: use the computed backoff",
+        "headers": {},
+        "now": "2026-11-09T15:00:00Z",
+        "expect": {
+          "seconds": null,
+          "sleep": true
+        }
+      }
+    ]
+  },
+  "backoff": {
+    "base_seconds": 0.5,
+    "max_seconds": 8,
+    "jitter_min": 0.75,
+    "jitter_max": 1.0,
+    "cases": [
+      {
+        "name": "retry 0",
+        "attempt": 0,
+        "expect": {
+          "min_seconds": 0.375,
+          "max_seconds": 0.5
+        }
+      },
+      {
+        "name": "retry 1",
+        "attempt": 1,
+        "expect": {
+          "min_seconds": 0.75,
+          "max_seconds": 1.0
+        }
+      },
+      {
+        "name": "retry 2",
+        "attempt": 2,
+        "expect": {
+          "min_seconds": 1.5,
+          "max_seconds": 2.0
+        }
+      },
+      {
+        "name": "retry 3",
+        "attempt": 3,
+        "expect": {
+          "min_seconds": 3.0,
+          "max_seconds": 4.0
+        }
+      },
+      {
+        "name": "retry 4",
+        "attempt": 4,
+        "expect": {
+          "min_seconds": 6.0,
+          "max_seconds": 8.0
+        }
+      },
+      {
+        "name": "retry 5",
+        "attempt": 5,
+        "expect": {
+          "min_seconds": 6.0,
+          "max_seconds": 8
+        }
+      },
+      {
+        "name": "retry 6",
+        "attempt": 6,
+        "expect": {
+          "min_seconds": 6.0,
+          "max_seconds": 8
+        }
+      },
+      {
+        "name": "retry 7",
+        "attempt": 7,
+        "expect": {
+          "min_seconds": 6.0,
+          "max_seconds": 8
+        }
+      }
+    ]
+  },
+  "retry_policy": [
+    {
+      "name": "GET without idempotency key, 408",
+      "method": "GET",
+      "idempotency_key": false,
+      "cause": 408,
+      "expect": {
+        "retry": true
+      }
+    },
+    {
+      "name": "PUT without idempotency key, 408",
+      "method": "PUT",
+      "idempotency_key": false,
+      "cause": 408,
+      "expect": {
+        "retry": true
+      }
+    },
+    {
+      "name": "DELETE without idempotency key, 408",
+      "method": "DELETE",
+      "idempotency_key": false,
+      "cause": 408,
+      "expect": {
+        "retry": true
+      }
+    },
+    {
+      "name": "POST with idempotency key, 408",
+      "method": "POST",
+      "idempotency_key": true,
+      "cause": 408,
+      "expect": {
+        "retry": true
+      }
+    },
+    {
+      "name": "POST without idempotency key, 408",
+      "method": "POST",
+      "idempotency_key": false,
+      "cause": 408,
+      "expect": {
+        "retry": false
+      }
+    },
+    {
+      "name": "PATCH with idempotency key, 408",
+      "method": "PATCH",
+      "idempotency_key": true,
+      "cause": 408,
+      "expect": {
+        "retry": true
+      }
+    },
+    {
+      "name": "PATCH without idempotency key, 408",
+      "method": "PATCH",
+      "idempotency_key": false,
+      "cause": 408,
+      "expect": {
+        "retry": false
+      }
+    },
+    {
+      "name": "GET without idempotency key, 429",
+      "method": "GET",
+      "idempotency_key": false,
+      "cause": 429,
+      "expect": {
+        "retry": true
+      }
+    },
+    {
+      "name": "PUT without idempotency key, 429",
+      "method": "PUT",
+      "idempotency_key": false,
+      "cause": 429,
+      "expect": {
+        "retry": true
+      }
+    },
+    {
+      "name": "DELETE without idempotency key, 429",
+      "method": "DELETE",
+      "idempotency_key": false,
+      "cause": 429,
+      "expect": {
+        "retry": true
+      }
+    },
+    {
+      "name": "POST with idempotency key, 429",
+      "method": "POST",
+      "idempotency_key": true,
+      "cause": 429,
+      "expect": {
+        "retry": true
+      }
+    },
+    {
+      "name": "POST without idempotency key, 429",
+      "method": "POST",
+      "idempotency_key": false,
+      "cause": 429,
+      "expect": {
+        "retry": false
+      }
+    },
+    {
+      "name": "PATCH with idempotency key, 429",
+      "method": "PATCH",
+      "idempotency_key": true,
+      "cause": 429,
+      "expect": {
+        "retry": true
+      }
+    },
+    {
+      "name": "PATCH without idempotency key, 429",
+      "method": "PATCH",
+      "idempotency_key": false,
+      "cause": 429,
+      "expect": {
+        "retry": false
+      }
+    },
+    {
+      "name": "GET without idempotency key, 500",
+      "method": "GET",
+      "idempotency_key": false,
+      "cause": 500,
+      "expect": {
+        "retry": true
+      }
+    },
+    {
+      "name": "PUT without idempotency key, 500",
+      "method": "PUT",
+      "idempotency_key": false,
+      "cause": 500,
+      "expect": {
+        "retry": true
+      }
+    },
+    {
+      "name": "DELETE without idempotency key, 500",
+      "method": "DELETE",
+      "idempotency_key": false,
+      "cause": 500,
+      "expect": {
+        "retry": true
+      }
+    },
+    {
+      "name": "POST with idempotency key, 500",
+      "method": "POST",
+      "idempotency_key": true,
+      "cause": 500,
+      "expect": {
+        "retry": true
+      }
+    },
+    {
+      "name": "POST without idempotency key, 500",
+      "method": "POST",
+      "idempotency_key": false,
+      "cause": 500,
+      "expect": {
+        "retry": false
+      }
+    },
+    {
+      "name": "PATCH with idempotency key, 500",
+      "method": "PATCH",
+      "idempotency_key": true,
+      "cause": 500,
+      "expect": {
+        "retry": true
+      }
+    },
+    {
+      "name": "PATCH without idempotency key, 500",
+      "method": "PATCH",
+      "idempotency_key": false,
+      "cause": 500,
+      "expect": {
+        "retry": false
+      }
+    },
+    {
+      "name": "GET without idempotency key, 502",
+      "method": "GET",
+      "idempotency_key": false,
+      "cause": 502,
+      "expect": {
+        "retry": true
+      }
+    },
+    {
+      "name": "PUT without idempotency key, 502",
+      "method": "PUT",
+      "idempotency_key": false,
+      "cause": 502,
+      "expect": {
+        "retry": true
+      }
+    },
+    {
+      "name": "DELETE without idempotency key, 502",
+      "method": "DELETE",
+      "idempotency_key": false,
+      "cause": 502,
+      "expect": {
+        "retry": true
+      }
+    },
+    {
+      "name": "POST with idempotency key, 502",
+      "method": "POST",
+      "idempotency_key": true,
+      "cause": 502,
+      "expect": {
+        "retry": true
+      }
+    },
+    {
+      "name": "POST without idempotency key, 502",
+      "method": "POST",
+      "idempotency_key": false,
+      "cause": 502,
+      "expect": {
+        "retry": false
+      }
+    },
+    {
+      "name": "PATCH with idempotency key, 502",
+      "method": "PATCH",
+      "idempotency_key": true,
+      "cause": 502,
+      "expect": {
+        "retry": true
+      }
+    },
+    {
+      "name": "PATCH without idempotency key, 502",
+      "method": "PATCH",
+      "idempotency_key": false,
+      "cause": 502,
+      "expect": {
+        "retry": false
+      }
+    },
+    {
+      "name": "GET without idempotency key, 503",
+      "method": "GET",
+      "idempotency_key": false,
+      "cause": 503,
+      "expect": {
+        "retry": true
+      }
+    },
+    {
+      "name": "PUT without idempotency key, 503",
+      "method": "PUT",
+      "idempotency_key": false,
+      "cause": 503,
+      "expect": {
+        "retry": true
+      }
+    },
+    {
+      "name": "DELETE without idempotency key, 503",
+      "method": "DELETE",
+      "idempotency_key": false,
+      "cause": 503,
+      "expect": {
+        "retry": true
+      }
+    },
+    {
+      "name": "POST with idempotency key, 503",
+      "method": "POST",
+      "idempotency_key": true,
+      "cause": 503,
+      "expect": {
+        "retry": true
+      }
+    },
+    {
+      "name": "POST without idempotency key, 503",
+      "method": "POST",
+      "idempotency_key": false,
+      "cause": 503,
+      "expect": {
+        "retry": false
+      }
+    },
+    {
+      "name": "PATCH with idempotency key, 503",
+      "method": "PATCH",
+      "idempotency_key": true,
+      "cause": 503,
+      "expect": {
+        "retry": true
+      }
+    },
+    {
+      "name": "PATCH without idempotency key, 503",
+      "method": "PATCH",
+      "idempotency_key": false,
+      "cause": 503,
+      "expect": {
+        "retry": false
+      }
+    },
+    {
+      "name": "GET without idempotency key, 504",
+      "method": "GET",
+      "idempotency_key": false,
+      "cause": 504,
+      "expect": {
+        "retry": true
+      }
+    },
+    {
+      "name": "PUT without idempotency key, 504",
+      "method": "PUT",
+      "idempotency_key": false,
+      "cause": 504,
+      "expect": {
+        "retry": true
+      }
+    },
+    {
+      "name": "DELETE without idempotency key, 504",
+      "method": "DELETE",
+      "idempotency_key": false,
+      "cause": 504,
+      "expect": {
+        "retry": true
+      }
+    },
+    {
+      "name": "POST with idempotency key, 504",
+      "method": "POST",
+      "idempotency_key": true,
+      "cause": 504,
+      "expect": {
+        "retry": true
+      }
+    },
+    {
+      "name": "POST without idempotency key, 504",
+      "method": "POST",
+      "idempotency_key": false,
+      "cause": 504,
+      "expect": {
+        "retry": false
+      }
+    },
+    {
+      "name": "PATCH with idempotency key, 504",
+      "method": "PATCH",
+      "idempotency_key": true,
+      "cause": 504,
+      "expect": {
+        "retry": true
+      }
+    },
+    {
+      "name": "PATCH without idempotency key, 504",
+      "method": "PATCH",
+      "idempotency_key": false,
+      "cause": 504,
+      "expect": {
+        "retry": false
+      }
+    },
+    {
+      "name": "GET without idempotency key, connection_error",
+      "method": "GET",
+      "idempotency_key": false,
+      "cause": "connection_error",
+      "expect": {
+        "retry": true
+      }
+    },
+    {
+      "name": "PUT without idempotency key, connection_error",
+      "method": "PUT",
+      "idempotency_key": false,
+      "cause": "connection_error",
+      "expect": {
+        "retry": true
+      }
+    },
+    {
+      "name": "DELETE without idempotency key, connection_error",
+      "method": "DELETE",
+      "idempotency_key": false,
+      "cause": "connection_error",
+      "expect": {
+        "retry": true
+      }
+    },
+    {
+      "name": "POST with idempotency key, connection_error",
+      "method": "POST",
+      "idempotency_key": true,
+      "cause": "connection_error",
+      "expect": {
+        "retry": true
+      }
+    },
+    {
+      "name": "POST without idempotency key, connection_error",
+      "method": "POST",
+      "idempotency_key": false,
+      "cause": "connection_error",
+      "expect": {
+        "retry": false
+      }
+    },
+    {
+      "name": "PATCH with idempotency key, connection_error",
+      "method": "PATCH",
+      "idempotency_key": true,
+      "cause": "connection_error",
+      "expect": {
+        "retry": true
+      }
+    },
+    {
+      "name": "PATCH without idempotency key, connection_error",
+      "method": "PATCH",
+      "idempotency_key": false,
+      "cause": "connection_error",
+      "expect": {
+        "retry": false
+      }
+    },
+    {
+      "name": "GET without idempotency key, timeout",
+      "method": "GET",
+      "idempotency_key": false,
+      "cause": "timeout",
+      "expect": {
+        "retry": true
+      }
+    },
+    {
+      "name": "PUT without idempotency key, timeout",
+      "method": "PUT",
+      "idempotency_key": false,
+      "cause": "timeout",
+      "expect": {
+        "retry": true
+      }
+    },
+    {
+      "name": "DELETE without idempotency key, timeout",
+      "method": "DELETE",
+      "idempotency_key": false,
+      "cause": "timeout",
+      "expect": {
+        "retry": true
+      }
+    },
+    {
+      "name": "POST with idempotency key, timeout",
+      "method": "POST",
+      "idempotency_key": true,
+      "cause": "timeout",
+      "expect": {
+        "retry": true
+      }
+    },
+    {
+      "name": "POST without idempotency key, timeout",
+      "method": "POST",
+      "idempotency_key": false,
+      "cause": "timeout",
+      "expect": {
+        "retry": false
+      }
+    },
+    {
+      "name": "PATCH with idempotency key, timeout",
+      "method": "PATCH",
+      "idempotency_key": true,
+      "cause": "timeout",
+      "expect": {
+        "retry": true
+      }
+    },
+    {
+      "name": "PATCH without idempotency key, timeout",
+      "method": "PATCH",
+      "idempotency_key": false,
+      "cause": "timeout",
+      "expect": {
+        "retry": false
+      }
+    },
+    {
+      "name": "GET without idempotency key, 400",
+      "method": "GET",
+      "idempotency_key": false,
+      "cause": 400,
+      "expect": {
+        "retry": false
+      }
+    },
+    {
+      "name": "POST with idempotency key, 400",
+      "method": "POST",
+      "idempotency_key": true,
+      "cause": 400,
+      "expect": {
+        "retry": false
+      }
+    },
+    {
+      "name": "GET without idempotency key, 401",
+      "method": "GET",
+      "idempotency_key": false,
+      "cause": 401,
+      "expect": {
+        "retry": false
+      }
+    },
+    {
+      "name": "POST with idempotency key, 401",
+      "method": "POST",
+      "idempotency_key": true,
+      "cause": 401,
+      "expect": {
+        "retry": false
+      }
+    },
+    {
+      "name": "GET without idempotency key, 402",
+      "method": "GET",
+      "idempotency_key": false,
+      "cause": 402,
+      "expect": {
+        "retry": false
+      }
+    },
+    {
+      "name": "POST with idempotency key, 402",
+      "method": "POST",
+      "idempotency_key": true,
+      "cause": 402,
+      "expect": {
+        "retry": false
+      }
+    },
+    {
+      "name": "GET without idempotency key, 403",
+      "method": "GET",
+      "idempotency_key": false,
+      "cause": 403,
+      "expect": {
+        "retry": false
+      }
+    },
+    {
+      "name": "POST with idempotency key, 403",
+      "method": "POST",
+      "idempotency_key": true,
+      "cause": 403,
+      "expect": {
+        "retry": false
+      }
+    },
+    {
+      "name": "GET without idempotency key, 404",
+      "method": "GET",
+      "idempotency_key": false,
+      "cause": 404,
+      "expect": {
+        "retry": false
+      }
+    },
+    {
+      "name": "POST with idempotency key, 404",
+      "method": "POST",
+      "idempotency_key": true,
+      "cause": 404,
+      "expect": {
+        "retry": false
+      }
+    },
+    {
+      "name": "GET without idempotency key, 409",
+      "method": "GET",
+      "idempotency_key": false,
+      "cause": 409,
+      "expect": {
+        "retry": false
+      }
+    },
+    {
+      "name": "POST with idempotency key, 409",
+      "method": "POST",
+      "idempotency_key": true,
+      "cause": 409,
+      "expect": {
+        "retry": false
+      }
+    },
+    {
+      "name": "GET without idempotency key, 410",
+      "method": "GET",
+      "idempotency_key": false,
+      "cause": 410,
+      "expect": {
+        "retry": false
+      }
+    },
+    {
+      "name": "POST with idempotency key, 410",
+      "method": "POST",
+      "idempotency_key": true,
+      "cause": 410,
+      "expect": {
+        "retry": false
+      }
+    },
+    {
+      "name": "GET without idempotency key, 413",
+      "method": "GET",
+      "idempotency_key": false,
+      "cause": 413,
+      "expect": {
+        "retry": false
+      }
+    },
+    {
+      "name": "POST with idempotency key, 413",
+      "method": "POST",
+      "idempotency_key": true,
+      "cause": 413,
+      "expect": {
+        "retry": false
+      }
+    },
+    {
+      "name": "GET without idempotency key, 422",
+      "method": "GET",
+      "idempotency_key": false,
+      "cause": 422,
+      "expect": {
+        "retry": false
+      }
+    },
+    {
+      "name": "POST with idempotency key, 422",
+      "method": "POST",
+      "idempotency_key": true,
+      "cause": 422,
+      "expect": {
+        "retry": false
+      }
+    },
+    {
+      "name": "GET without idempotency key, 501",
+      "method": "GET",
+      "idempotency_key": false,
+      "cause": 501,
+      "expect": {
+        "retry": false
+      }
+    },
+    {
+      "name": "POST with idempotency key, 501",
+      "method": "POST",
+      "idempotency_key": true,
+      "cause": 501,
+      "expect": {
+        "retry": false
+      }
+    }
+  ],
+  "path_segment": [
+    {
+      "name": "plain id",
+      "input": "co_01h455vb4pex5vsknk084sn02q",
+      "expect": {
+        "encoded": "co_01h455vb4pex5vsknk084sn02q"
+      }
+    },
+    {
+      "name": "unreserved characters stay",
+      "input": "A-z_0.9~",
+      "expect": {
+        "encoded": "A-z_0.9~"
+      }
+    },
+    {
+      "name": "space",
+      "input": "a b",
+      "expect": {
+        "encoded": "a%20b"
+      }
+    },
+    {
+      "name": "slash",
+      "input": "a/b",
+      "expect": {
+        "encoded": "a%2Fb"
+      }
+    },
+    {
+      "name": "question mark",
+      "input": "a?b",
+      "expect": {
+        "encoded": "a%3Fb"
+      }
+    },
+    {
+      "name": "hash",
+      "input": "a#b",
+      "expect": {
+        "encoded": "a%23b"
+      }
+    },
+    {
+      "name": "percent",
+      "input": "100%",
+      "expect": {
+        "encoded": "100%25"
+      }
+    },
+    {
+      "name": "already encoded input is encoded again",
+      "input": "a%2Fb",
+      "expect": {
+        "encoded": "a%252Fb"
+      }
+    },
+    {
+      "name": "unicode",
+      "input": "счёт-№1",
+      "expect": {
+        "encoded": "%D1%81%D1%87%D1%91%D1%82-%E2%84%961"
+      }
+    },
+    {
+      "name": "emoji (4-byte UTF-8)",
+      "input": "😀",
+      "expect": {
+        "encoded": "%F0%9F%98%80"
+      }
+    },
+    {
+      "name": "CR LF",
+      "input": "a\r\nb",
+      "expect": {
+        "encoded": "a%0D%0Ab"
+      }
+    },
+    {
+      "name": "backslash",
+      "input": "a\\b",
+      "expect": {
+        "encoded": "a%5Cb"
+      }
+    },
+    {
+      "name": "double quote",
+      "input": "a\"b",
+      "expect": {
+        "encoded": "a%22b"
+      }
+    },
+    {
+      "name": "three dots is a normal segment",
+      "input": "...",
+      "expect": {
+        "encoded": "..."
+      }
+    },
+    {
+      "name": "dot inside",
+      "input": "a.b",
+      "expect": {
+        "encoded": "a.b"
+      }
+    },
+    {
+      "name": "encoded dot-dot is data",
+      "input": "%2e%2e",
+      "expect": {
+        "encoded": "%252e%252e"
+      }
+    },
+    {
+      "name": "empty",
+      "input": "",
+      "expect": {
+        "error": true
+      }
+    },
+    {
+      "name": "single dot",
+      "input": ".",
+      "expect": {
+        "error": true
+      }
+    },
+    {
+      "name": "dot-dot",
+      "input": "..",
+      "expect": {
+        "error": true
+      }
+    }
+  ],
+  "query": [
+    {
+      "name": "string",
+      "params": [
+        {
+          "name": "q",
+          "type": "string",
+          "value": "abc"
+        }
+      ],
+      "expect": {
+        "query": "q=abc"
+      }
+    },
+    {
+      "name": "plus sign",
+      "params": [
+        {
+          "name": "q",
+          "type": "string",
+          "value": "a+b"
+        }
+      ],
+      "expect": {
+        "query": "q=a%2Bb"
+      }
+    },
+    {
+      "name": "booleans",
+      "params": [
+        {
+          "name": "active",
+          "type": "boolean",
+          "value": true
+        },
+        {
+          "name": "archived",
+          "type": "boolean",
+          "value": false
+        }
+      ],
+      "expect": {
+        "query": "active=true&archived=false"
+      }
+    },
+    {
+      "name": "integer",
+      "params": [
+        {
+          "name": "limit",
+          "type": "integer",
+          "value": 50
+        }
+      ],
+      "expect": {
+        "query": "limit=50"
+      }
+    },
+    {
+      "name": "int64 keeps every digit",
+      "params": [
+        {
+          "name": "after",
+          "type": "integer",
+          "value": "9007199254740993"
+        }
+      ],
+      "expect": {
+        "query": "after=9007199254740993"
+      }
+    },
+    {
+      "name": "RFC 3339 with offset",
+      "params": [
+        {
+          "name": "since",
+          "type": "date-time",
+          "value": "2026-11-09T15:00:00+05:00"
+        }
+      ],
+      "expect": {
+        "query": "since=2026-11-09T15%3A00%3A00%2B05%3A00"
+      }
+    },
+    {
+      "name": "RFC 3339 UTC",
+      "params": [
+        {
+          "name": "since",
+          "type": "date-time",
+          "value": "2026-11-09T10:00:00Z"
+        }
+      ],
+      "expect": {
+        "query": "since=2026-11-09T10%3A00%3A00Z"
+      }
+    },
+    {
+      "name": "null and absent are omitted",
+      "params": [
+        {
+          "name": "cursor",
+          "type": "string",
+          "value": null
+        },
+        {
+          "name": "limit",
+          "type": "integer",
+          "value": 10
+        }
+      ],
+      "expect": {
+        "query": "limit=10"
+      }
+    },
+    {
+      "name": "array as repeated keys",
+      "params": [
+        {
+          "name": "status",
+          "type": "array",
+          "value": [
+            "new",
+            "done"
+          ]
+        }
+      ],
+      "expect": {
+        "query": "status=new&status=done"
+      }
+    },
+    {
+      "name": "reserved characters",
+      "params": [
+        {
+          "name": "q",
+          "type": "string",
+          "value": "a&b=c#d?e/f"
+        }
+      ],
+      "expect": {
+        "query": "q=a%26b%3Dc%23d%3Fe%2Ff"
+      }
+    },
+    {
+      "name": "unicode",
+      "params": [
+        {
+          "name": "q",
+          "type": "string",
+          "value": "жук"
+        }
+      ],
+      "expect": {
+        "query": "q=%D0%B6%D1%83%D0%BA"
+      }
+    },
+    {
+      "name": "empty string is sent",
+      "params": [
+        {
+          "name": "q",
+          "type": "string",
+          "value": ""
+        }
+      ],
+      "expect": {
+        "query": "q="
+      }
+    },
+    {
+      "name": "space may be %20 or +",
+      "params": [
+        {
+          "name": "q",
+          "type": "string",
+          "value": "a b"
+        }
+      ],
+      "expect": {
+        "any_of": [
+          "q=a%20b",
+          "q=a+b"
+        ]
+      }
+    },
+    {
+      "name": "no parameters",
+      "params": [],
+      "expect": {
+        "query": ""
+      }
+    }
+  ],
+  "sse": [
+    {
+      "name": "LF line endings",
+      "raw_base64": "ZXZlbnQ6IHRleHQKZGF0YTogb25lCgpldmVudDogdGV4dApkYXRhOiB0d28KCg==",
+      "raw": "event: text\ndata: one\n\nevent: text\ndata: two\n\n",
+      "expect": {
+        "events": [
+          {
+            "event": "text",
+            "data": "one",
+            "id": null
+          },
+          {
+            "event": "text",
+            "data": "two",
+            "id": null
+          }
+        ]
+      }
+    },
+    {
+      "name": "CRLF line endings",
+      "raw_base64": "ZXZlbnQ6IHRleHQNCmRhdGE6IG9uZQ0KDQpldmVudDogdGV4dA0KZGF0YTogdHdvDQoNCg==",
+      "raw": "event: text\r\ndata: one\r\n\r\nevent: text\r\ndata: two\r\n\r\n",
+      "expect": {
+        "events": [
+          {
+            "event": "text",
+            "data": "one",
+            "id": null
+          },
+          {
+            "event": "text",
+            "data": "two",
+            "id": null
+          }
+        ]
+      }
+    },
+    {
+      "name": "bare CR line endings",
+      "raw_base64": "ZXZlbnQ6IHRleHQNZGF0YTogb25lDQ1ldmVudDogdGV4dA1kYXRhOiB0d28NDQ==",
+      "raw": "event: text\rdata: one\r\revent: text\rdata: two\r\r",
+      "expect": {
+        "events": [
+          {
+            "event": "text",
+            "data": "one",
+            "id": null
+          },
+          {
+            "event": "text",
+            "data": "two",
+            "id": null
+          }
+        ]
+      }
+    },
+    {
+      "name": "mixed line endings",
+      "raw_base64": "ZGF0YTogYQ0KCmRhdGE6IGINDWRhdGE6IGMKDQo=",
+      "raw": "data: a\r\n\ndata: b\r\rdata: c\n\r\n",
+      "expect": {
+        "events": [
+          {
+            "event": "message",
+            "data": "a",
+            "id": null
+          },
+          {
+            "event": "message",
+            "data": "b",
+            "id": null
+          },
+          {
+            "event": "message",
+            "data": "c",
+            "id": null
+          }
+        ]
+      }
+    },
+    {
+      "name": "multi-line data is joined with LF",
+      "raw_base64": "ZGF0YTogbGluZSAxCmRhdGE6IGxpbmUgMgpkYXRhOgpkYXRhOiBsaW5lIDQKCg==",
+      "raw": "data: line 1\ndata: line 2\ndata:\ndata: line 4\n\n",
+      "expect": {
+        "events": [
+          {
+            "event": "message",
+            "data": "line 1\nline 2\n\nline 4",
+            "id": null
+          }
+        ]
+      }
+    },
+    {
+      "name": "default event name is message",
+      "raw_base64": "ZGF0YTogaGVsbG8KCg==",
+      "raw": "data: hello\n\n",
+      "expect": {
+        "events": [
+          {
+            "event": "message",
+            "data": "hello",
+            "id": null
+          }
+        ]
+      }
+    },
+    {
+      "name": "only one leading space is stripped",
+      "raw_base64": "ZGF0YTpuby1zcGFjZQoKZGF0YTogIHR3byBzcGFjZXMKCg==",
+      "raw": "data:no-space\n\ndata:  two spaces\n\n",
+      "expect": {
+        "events": [
+          {
+            "event": "message",
+            "data": "no-space",
+            "id": null
+          },
+          {
+            "event": "message",
+            "data": " two spaces",
+            "id": null
+          }
+        ]
+      }
+    },
+    {
+      "name": "comments and keep-alives are ignored",
+      "raw_base64": "OiBrZWVwLWFsaXZlCgo6CjogYW5vdGhlcgpkYXRhOiB4Cgo6IHRyYWlsaW5nIGNvbW1lbnQKCg==",
+      "raw": ": keep-alive\n\n:\n: another\ndata: x\n\n: trailing comment\n\n",
+      "expect": {
+        "events": [
+          {
+            "event": "message",
+            "data": "x",
+            "id": null
+          }
+        ]
+      }
+    },
+    {
+      "name": "leading BOM is stripped",
+      "raw_base64": "77u/ZGF0YTogYm9tCgo=",
+      "raw": "﻿data: bom\n\n",
+      "expect": {
+        "events": [
+          {
+            "event": "message",
+            "data": "bom",
+            "id": null
+          }
+        ]
+      }
+    },
+    {
+      "name": "id is remembered for later events",
+      "raw_base64": "aWQ6IDEKZGF0YTogYQoKZGF0YTogYgoKaWQ6IDcKZGF0YTogYwoKaWQKZGF0YTogZAoK",
+      "raw": "id: 1\ndata: a\n\ndata: b\n\nid: 7\ndata: c\n\nid\ndata: d\n\n",
+      "expect": {
+        "events": [
+          {
+            "event": "message",
+            "data": "a",
+            "id": "1"
+          },
+          {
+            "event": "message",
+            "data": "b",
+            "id": "1"
+          },
+          {
+            "event": "message",
+            "data": "c",
+            "id": "7"
+          },
+          {
+            "event": "message",
+            "data": "d",
+            "id": ""
+          }
+        ]
+      }
+    },
+    {
+      "name": "id containing NUL is ignored",
+      "raw_base64": "aWQ6IDUKZGF0YTogYQoKaWQ6IGJhZABpZApkYXRhOiBiCgo=",
+      "raw": "id: 5\ndata: a\n\nid: bad\u0000id\ndata: b\n\n",
+      "expect": {
+        "events": [
+          {
+            "event": "message",
+            "data": "a",
+            "id": "5"
+          },
+          {
+            "event": "message",
+            "data": "b",
+            "id": "5"
+          }
+        ]
+      }
+    },
+    {
+      "name": "retry field",
+      "raw_base64": "cmV0cnk6IDMwMDAKZGF0YTogYQoKcmV0cnk6IHNvb24KZGF0YTogYgoK",
+      "raw": "retry: 3000\ndata: a\n\nretry: soon\ndata: b\n\n",
+      "expect": {
+        "events": [
+          {
+            "event": "message",
+            "data": "a",
+            "id": null,
+            "retry": 3000
+          },
+          {
+            "event": "message",
+            "data": "b",
+            "id": null
+          }
+        ]
+      }
+    },
+    {
+      "name": "unknown fields and field without colon",
+      "raw_base64": "Zm9vOiBiYXIKZGF0YQpkYXRhCgpldmVudApkYXRhOiB4Cgo=",
+      "raw": "foo: bar\ndata\ndata\n\nevent\ndata: x\n\n",
+      "expect": {
+        "events": [
+          {
+            "event": "message",
+            "data": "\n",
+            "id": null
+          },
+          {
+            "event": "message",
+            "data": "x",
+            "id": null
+          }
+        ]
+      }
+    },
+    {
+      "name": "empty data line dispatches an event with empty data (ping heart-beat); no data line dispatches nothing",
+      "raw_base64": "ZXZlbnQ6IHBpbmcKZGF0YTogCgpldmVudDogcGluZwoKZXZlbnQ6IHRleHQKZGF0YTogdAoK",
+      "raw": "event: ping\ndata: \n\nevent: ping\n\nevent: text\ndata: t\n\n",
+      "expect": {
+        "events": [
+          {
+            "event": "ping",
+            "data": "",
+            "id": null
+          },
+          {
+            "event": "text",
+            "data": "t",
+            "id": null
+          }
+        ]
+      }
+    },
+    {
+      "name": "event name does not leak into the next event",
+      "raw_base64": "ZXZlbnQ6IHRleHQKZGF0YTogYQoKZGF0YTogYgoK",
+      "raw": "event: text\ndata: a\n\ndata: b\n\n",
+      "expect": {
+        "events": [
+          {
+            "event": "text",
+            "data": "a",
+            "id": null
+          },
+          {
+            "event": "message",
+            "data": "b",
+            "id": null
+          }
+        ]
+      }
+    },
+    {
+      "name": "colon inside the value; the JSON is not a contract event and is passed through",
+      "raw_base64": "ZGF0YTogeyJ1cmwiOiJodHRwczovL3R1bmdvLmt6L2E6YiJ9Cgo=",
+      "raw": "data: {\"url\":\"https://tungo.kz/a:b\"}\n\n",
+      "contract_valid": false,
+      "expect": {
+        "events": [
+          {
+            "event": "message",
+            "data": "{\"url\":\"https://tungo.kz/a:b\"}",
+            "id": null
+          }
+        ]
+      }
+    },
+    {
+      "name": "unterminated last event is dropped",
+      "raw_base64": "ZGF0YTogY29tcGxldGUKCmV2ZW50OiB0ZXh0CmRhdGE6IGluY29tcGxldGUK",
+      "raw": "data: complete\n\nevent: text\ndata: incomplete\n",
+      "expect": {
+        "events": [
+          {
+            "event": "message",
+            "data": "complete",
+            "id": null
+          }
+        ]
+      }
+    },
+    {
+      "name": "unterminated last line is dropped",
+      "raw_base64": "ZGF0YTogY29tcGxldGUKCmRhdGE6IGluY29tcGw=",
+      "raw": "data: complete\n\ndata: incompl",
+      "expect": {
+        "events": [
+          {
+            "event": "message",
+            "data": "complete",
+            "id": null
+          }
+        ]
+      }
+    },
+    {
+      "name": "empty stream",
+      "raw_base64": "",
+      "raw": "",
+      "expect": {
+        "events": []
+      }
+    },
+    {
+      "name": "UTF-8 sequence and line ending split across chunks",
+      "raw_base64": "ZXZlbnQ6IHRleHQKZGF0YTogeyJ0eXBlIjoidGV4dCIsImRlbHRhIjoi0J/RgNC40LLQtdGCLCDQvNC40YAg8J+YgCJ9Cgo=",
+      "raw": "event: text\ndata: {\"type\":\"text\",\"delta\":\"Привет, мир 😀\"}\n\n",
+      "chunks_base64": [
+        "ZXZl",
+        "bnQ6IHRleHQ=",
+        "CmRhdGE6IHsidHlwZSI6InRleHQiLCJkZWx0YSI6ItCf0Q==",
+        "gNC40LLQtdGCLCDQvNC40YAg",
+        "8J+YgCJ9Cg==",
+        "Cg=="
+      ],
+      "expect": {
+        "events": [
+          {
+            "event": "text",
+            "data": "{\"type\":\"text\",\"delta\":\"Привет, мир 😀\"}",
+            "id": null
+          }
+        ]
+      }
+    },
+    {
+      "name": "CRLF split across chunks is one line ending",
+      "raw_base64": "ZGF0YTogYQ0KDQpkYXRhOiBiDQoNCg==",
+      "raw": "data: a\r\n\r\ndata: b\r\n\r\n",
+      "chunks_base64": [
+        "ZGF0YTogYQ0=",
+        "Cg0=",
+        "CmRhdGE6IGIN",
+        "Cg0K"
+      ],
+      "expect": {
+        "events": [
+          {
+            "event": "message",
+            "data": "a",
+            "id": null
+          },
+          {
+            "event": "message",
+            "data": "b",
+            "id": null
+          }
+        ]
+      }
+    },
+    {
+      "name": "backend chat frames",
+      "raw_base64": "aWQ6IDEKZXZlbnQ6IHRleHQKZGF0YTogeyJ0eXBlIjoidGV4dCIsImRlbHRhIjoiSGkifQoKZXZlbnQ6IHBpbmcKZGF0YTogCgppZDogMgpldmVudDogZG9uZQpkYXRhOiB7InR5cGUiOiJkb25lIiwic3RvcF9yZWFzb24iOiJlbmRfdHVybiJ9Cgo=",
+      "raw": "id: 1\nevent: text\ndata: {\"type\":\"text\",\"delta\":\"Hi\"}\n\nevent: ping\ndata: \n\nid: 2\nevent: done\ndata: {\"type\":\"done\",\"stop_reason\":\"end_turn\"}\n\n",
+      "expect": {
+        "events": [
+          {
+            "event": "text",
+            "data": "{\"type\":\"text\",\"delta\":\"Hi\"}",
+            "id": "1"
+          },
+          {
+            "event": "ping",
+            "data": "",
+            "id": "1"
+          },
+          {
+            "event": "done",
+            "data": "{\"type\":\"done\",\"stop_reason\":\"end_turn\"}",
+            "id": "2"
+          }
+        ]
+      }
+    }
+  ],
+  "chat_stream": [
+    {
+      "name": "text deltas, then done with usage and cost",
+      "status": 200,
+      "headers": {
+        "Content-Type": "text/event-stream",
+        "X-Dialog-Id": "0b5f6a0e-6a1c-4d55-9a57-2f1d8b9c3e10",
+        "X-Turn-No": "3",
+        "x-request-id": "req_4f9c2a7e1b3d4c5a8e6f7a9b0c1d2e3f"
+      },
+      "raw": "id: 1\nevent: text\ndata: {\"type\":\"text\",\"delta\":\"НДС составляет \",\"step\":1}\n\nid: 2\nevent: text\ndata: {\"type\":\"text\",\"delta\":\"5 400 ₸.\",\"step\":1}\n\nid: 3\nevent: done\ndata: {\"type\":\"done\",\"usage\":{\"input_tokens\":1200,\"output_tokens\":85,\"cache_read_tokens\":900,\"cache_write_tokens\":0},\"cost_tiyn\":185,\"stop_reason\":\"end_turn\"}\n\n",
+      "expect": {
+        "dialog_id": "0b5f6a0e-6a1c-4d55-9a57-2f1d8b9c3e10",
+        "turn_no": 3,
+        "text": "НДС составляет 5 400 ₸.",
+        "stop_reason": "end_turn",
+        "event_count": 3,
+        "cost_tiyn": 185,
+        "usage": {
+          "input_tokens": 1200,
+          "output_tokens": 85,
+          "cache_read_tokens": 900,
+          "cache_write_tokens": 0
+        },
+        "choice_id": null,
+        "error": null,
+        "event_types": [
+          "text",
+          "text",
+          "done"
+        ]
+      }
+    },
+    {
+      "name": "progress removes the text of its step; ping is skipped",
+      "status": 200,
+      "headers": {
+        "Content-Type": "text/event-stream",
+        "X-Dialog-Id": "0b5f6a0e-6a1c-4d55-9a57-2f1d8b9c3e10",
+        "X-Turn-No": "3",
+        "x-request-id": "req_4f9c2a7e1b3d4c5a8e6f7a9b0c1d2e3f"
+      },
+      "raw": "id: 1\nevent: status\ndata: {\"type\":\"status\",\"text\":\"Думаю…\"}\n\nid: 2\nevent: text\ndata: {\"type\":\"text\",\"delta\":\"Сейчас посмотрю в 1С.\",\"step\":1}\n\nid: 3\nevent: progress\ndata: {\"type\":\"progress\",\"step\":1,\"text\":\"Сейчас посмотрю в 1С.\"}\n\nid: 4\nevent: tool\ndata: {\"type\":\"tool\",\"name\":\"onec_query\",\"status\":\"started\",\"title\":\"Ищу реализацию\"}\n\nevent: ping\ndata: \n\nid: 5\nevent: tool\ndata: {\"type\":\"tool\",\"name\":\"onec_query\",\"status\":\"done\"}\n\nid: 6\nevent: text\ndata: {\"type\":\"text\",\"delta\":\"НДС \",\"step\":2}\n\nid: 7\nevent: text\ndata: {\"type\":\"text\",\"delta\":\"5 400 ₸.\",\"step\":2}\n\nid: 8\nevent: citation\ndata: {\"type\":\"citation\",\"source\":\"НК РК ст. 422\",\"title\":\"Ставка НДС\"}\n\nid: 9\nevent: done\ndata: {\"type\":\"done\",\"stop_reason\":\"end_turn\"}\n\n",
+      "expect": {
+        "dialog_id": "0b5f6a0e-6a1c-4d55-9a57-2f1d8b9c3e10",
+        "turn_no": 3,
+        "text": "НДС 5 400 ₸.",
+        "stop_reason": "end_turn",
+        "event_count": 9,
+        "cost_tiyn": null,
+        "usage": null,
+        "choice_id": null,
+        "error": null,
+        "event_types": [
+          "status",
+          "text",
+          "progress",
+          "tool",
+          "tool",
+          "text",
+          "text",
+          "citation",
+          "done"
+        ]
+      }
+    },
+    {
+      "name": "done.answer replaces the accumulated text",
+      "status": 200,
+      "headers": {
+        "Content-Type": "text/event-stream",
+        "X-Dialog-Id": "0b5f6a0e-6a1c-4d55-9a57-2f1d8b9c3e10",
+        "X-Turn-No": "3",
+        "x-request-id": "req_4f9c2a7e1b3d4c5a8e6f7a9b0c1d2e3f"
+      },
+      "raw": "id: 1\nevent: status\ndata: {\"type\":\"status\",\"text\":\"Думаю…\"}\n\nid: 2\nevent: text\ndata: {\"type\":\"text\",\"delta\":\"Сейчас посмотрю в 1С.\",\"step\":1}\n\nid: 3\nevent: progress\ndata: {\"type\":\"progress\",\"step\":1,\"text\":\"Сейчас посмотрю в 1С.\"}\n\nid: 4\nevent: tool\ndata: {\"type\":\"tool\",\"name\":\"onec_query\",\"status\":\"started\",\"title\":\"Ищу реализацию\"}\n\nevent: ping\ndata: \n\nid: 5\nevent: tool\ndata: {\"type\":\"tool\",\"name\":\"onec_query\",\"status\":\"done\"}\n\nid: 6\nevent: text\ndata: {\"type\":\"text\",\"delta\":\"НДС \",\"step\":2}\n\nid: 7\nevent: text\ndata: {\"type\":\"text\",\"delta\":\"5 400 ₸.\",\"step\":2}\n\nid: 8\nevent: citation\ndata: {\"type\":\"citation\",\"source\":\"НК РК ст. 422\",\"title\":\"Ставка НДС\"}\n\nid: 9\nevent: done\ndata: {\"type\":\"done\",\"usage\":{\"input_tokens\":1200,\"output_tokens\":85,\"cache_read_tokens\":900,\"cache_write_tokens\":0},\"cost_tiyn\":420,\"stop_reason\":\"end_turn\",\"answer\":\"**НДС** — 5 400 ₸.\"}\n\n",
+      "expect": {
+        "dialog_id": "0b5f6a0e-6a1c-4d55-9a57-2f1d8b9c3e10",
+        "turn_no": 3,
+        "text": "**НДС** — 5 400 ₸.",
+        "stop_reason": "end_turn",
+        "event_count": 9,
+        "cost_tiyn": 420,
+        "usage": {
+          "input_tokens": 1200,
+          "output_tokens": 85,
+          "cache_read_tokens": 900,
+          "cache_write_tokens": 0
+        },
+        "choice_id": null,
+        "error": null
+      }
+    },
+    {
+      "name": "mid-stream error event, then done",
+      "status": 200,
+      "headers": {
+        "Content-Type": "text/event-stream",
+        "X-Dialog-Id": "0b5f6a0e-6a1c-4d55-9a57-2f1d8b9c3e10",
+        "X-Turn-No": "3",
+        "x-request-id": "req_4f9c2a7e1b3d4c5a8e6f7a9b0c1d2e3f"
+      },
+      "raw": "id: 1\nevent: text\ndata: {\"type\":\"text\",\"delta\":\"Начинаю\",\"step\":1}\n\nid: 2\nevent: error\ndata: {\"type\":\"error\",\"error\":{\"type\":\"limit_error\",\"code\":\"budget\",\"message\":\"Дневной лимит исчерпан.\",\"can_request_more\":true,\"limit_kind\":\"day\"},\"request_id\":\"req_4f9c2a7e1b3d4c5a8e6f7a9b0c1d2e3f\"}\n\nid: 3\nevent: done\ndata: {\"type\":\"done\",\"stop_reason\":\"budget\"}\n\n",
+      "expect": {
+        "dialog_id": "0b5f6a0e-6a1c-4d55-9a57-2f1d8b9c3e10",
+        "turn_no": 3,
+        "text": "Начинаю",
+        "stop_reason": "budget",
+        "event_count": 3,
+        "cost_tiyn": null,
+        "usage": null,
+        "choice_id": null,
+        "error": {
+          "type": "limit_error",
+          "code": "budget",
+          "message": "Дневной лимит исчерпан.",
+          "request_id": "req_4f9c2a7e1b3d4c5a8e6f7a9b0c1d2e3f",
+          "extra": {
+            "can_request_more": true,
+            "limit_kind": "day"
+          }
+        },
+        "event_types": [
+          "text",
+          "error",
+          "done"
+        ]
+      }
+    },
+    {
+      "name": "question to the user: awaiting_user with choice_id",
+      "status": 200,
+      "headers": {
+        "Content-Type": "text/event-stream",
+        "X-Dialog-Id": "0b5f6a0e-6a1c-4d55-9a57-2f1d8b9c3e10",
+        "X-Turn-No": "3",
+        "x-request-id": "req_4f9c2a7e1b3d4c5a8e6f7a9b0c1d2e3f"
+      },
+      "raw": "id: 1\nevent: text\ndata: {\"type\":\"text\",\"delta\":\"Уточните период.\",\"step\":1}\n\nid: 2\nevent: choice\ndata: {\"type\":\"choice\",\"choice_id\":\"ch_01\",\"questions\":[{\"question\":\"За какой квартал?\",\"header\":\"Период\",\"options\":[{\"label\":\"III квартал\",\"description\":\"Июль — сентябрь\"},{\"label\":\"IV квартал\",\"description\":\"Октябрь — декабрь\"}],\"multi_select\":false}]}\n\nid: 3\nevent: done\ndata: {\"type\":\"done\",\"stop_reason\":\"awaiting_user\",\"choice_id\":\"ch_01\"}\n\n",
+      "expect": {
+        "dialog_id": "0b5f6a0e-6a1c-4d55-9a57-2f1d8b9c3e10",
+        "turn_no": 3,
+        "text": "Уточните период.",
+        "stop_reason": "awaiting_user",
+        "event_count": 3,
+        "cost_tiyn": null,
+        "usage": null,
+        "choice_id": "ch_01",
+        "error": null,
+        "event_types": [
+          "text",
+          "choice",
+          "done"
+        ]
+      }
+    },
+    {
+      "name": "unknown event type, unknown fields and missing required properties do not break the stream",
+      "status": 200,
+      "headers": {
+        "Content-Type": "text/event-stream",
+        "X-Dialog-Id": "0b5f6a0e-6a1c-4d55-9a57-2f1d8b9c3e10",
+        "X-Turn-No": "3",
+        "x-request-id": "req_4f9c2a7e1b3d4c5a8e6f7a9b0c1d2e3f"
+      },
+      "raw": "id: 1\nevent: thinking\ndata: {\"type\":\"thinking\",\"delta\":\"Нужно проверить…\"}\n\nid: 2\nevent: text\ndata: {\"type\":\"text\",\"delta\":\"Готово\"}\n\nid: 3\nevent: hologram\ndata: {\"type\":\"hologram\",\"payload\":{\"x\":1}}\n\nid: 4\nevent: choice\ndata: {\"type\":\"choice\",\"choice_id\":\"ch_02\",\"questions\":[{\"question\":\"За какой квартал?\",\"header\":\"Период\",\"options\":[{\"label\":\"III квартал\"},{\"label\":\"IV квартал\"}],\"multi_select\":false}]}\n\nid: 5\nevent: done\ndata: {\"type\":\"done\",\"stop_reason\":\"end_turn\",\"future_field\":true}\n\n",
+      "contract_valid": false,
+      "expect": {
+        "dialog_id": "0b5f6a0e-6a1c-4d55-9a57-2f1d8b9c3e10",
+        "turn_no": 3,
+        "text": "Готово",
+        "stop_reason": "end_turn",
+        "event_count": 5,
+        "cost_tiyn": null,
+        "usage": null,
+        "choice_id": null,
+        "error": null,
+        "event_types": [
+          "thinking",
+          "text",
+          "hologram",
+          "choice",
+          "done"
+        ]
+      }
+    },
+    {
+      "name": "stream ends without done",
+      "status": 200,
+      "headers": {
+        "Content-Type": "text/event-stream",
+        "X-Dialog-Id": "0b5f6a0e-6a1c-4d55-9a57-2f1d8b9c3e10",
+        "X-Turn-No": "3",
+        "x-request-id": "req_4f9c2a7e1b3d4c5a8e6f7a9b0c1d2e3f"
+      },
+      "raw": "id: 1\nevent: text\ndata: {\"type\":\"text\",\"delta\":\"Часть ответа\",\"step\":1}\n\n",
+      "expect": {
+        "dialog_id": "0b5f6a0e-6a1c-4d55-9a57-2f1d8b9c3e10",
+        "turn_no": 3,
+        "text": "Часть ответа",
+        "stop_reason": null,
+        "event_count": 1,
+        "cost_tiyn": null,
+        "usage": null,
+        "choice_id": null,
+        "error": null,
+        "event_types": [
+          "text"
+        ]
+      }
+    }
+  ]
 }

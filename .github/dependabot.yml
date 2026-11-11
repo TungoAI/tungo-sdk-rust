@@ -1,0 +1,12 @@
+# The workflows pin third-party GitHub Actions to full commit SHAs. Dependabot reports
+# newer releases once a month. This repository is generated: take the new pin over into
+# tungo-sdkgen (actionPins in emit_actions.go) and regenerate rather than merging the pull
+# request by hand, or the next generation will undo it.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
+    commit-message:
+      prefix: ci
