@@ -20,7 +20,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Install the stable toolchain
         run: |
           rustup toolchain install stable --profile minimal --component rustfmt --component clippy
@@ -45,7 +45,7 @@ jobs:
         # The minimum supported Rust version (rust-version in Cargo.toml) and the latest stable.
         toolchain: ["1.86", stable]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Install the toolchain
         env:
           TOOLCHAIN: ${{ matrix.toolchain }}
@@ -62,7 +62,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Install the stable toolchain
         run: |
           rustup toolchain install stable --profile minimal
