@@ -338,6 +338,7 @@ impl HookPayload {
     }
 
     /// Sets the `X-Event-Id` header, which the API uses to drop duplicates.
+    /// It is also the `Idempotency-Key` unless the request options carry one.
     #[must_use]
     pub fn event_id(mut self, event_id: impl Into<String>) -> Self {
         self.event_id = Some(event_id.into());
@@ -361,6 +362,9 @@ impl HookPayload {
         }
         if let Some(event_id) = &self.event_id {
             request.header("X-Event-Id", event_id)?;
+            // The event id is the default `Idempotency-Key`: the API reads that
+            // header first, so a random key would override the event id.
+            request.default_key = Some(event_id.clone());
         }
         request.bytes(self.body, &self.content_type);
         Ok(request)

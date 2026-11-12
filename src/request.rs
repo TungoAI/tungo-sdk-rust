@@ -149,6 +149,10 @@ pub struct Request {
     pub(crate) content_type: Option<String>,
     pub(crate) auth: Auth,
     pub(crate) idempotent: bool,
+    /// The `Idempotency-Key` used when the caller gives none (the event id of
+    /// a hook event): the API reads `Idempotency-Key` before `X-Event-Id`, so
+    /// a random key would override the event id.
+    pub(crate) default_key: Option<String>,
     pub(crate) long_running: bool,
 }
 
@@ -197,6 +201,7 @@ impl Request {
             content_type: None,
             auth: Auth::ApiKey,
             idempotent: false,
+            default_key: None,
             long_running: false,
         }
     }

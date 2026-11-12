@@ -2939,7 +2939,7 @@ impl Automations<'_> {
     ///
     /// The hook token authenticates the call: the API key is not sent.
     ///
-    /// The SDK sends an `Idempotency-Key` (generated unless the request options carry one) and may retry the call.
+    /// The SDK sends an `Idempotency-Key` (the request options' key, else the event id, else a random one) and may retry the call.
     ///
     /// The payload is signed (`X-Signature: sha256=<hex>`) when it carries a secret.
     pub async fn post_hook(

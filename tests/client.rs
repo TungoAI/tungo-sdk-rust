@@ -1225,6 +1225,8 @@ async fn hooks_are_posted_without_the_api_key_and_signed() {
     );
     assert_eq!(request.header("content-type"), Some("application/json"));
     assert_eq!(request.header("x-event-id"), Some("order_1532"));
+    // The API reads Idempotency-Key before X-Event-Id: the event id must be the key.
+    assert_eq!(request.header("idempotency-key"), Some("order_1532"));
     assert_eq!(request.body, signed, "the signed bytes are the sent bytes");
     let signature = request.header("x-signature").expect("signature");
     assert!(tungo_sdk::webhooks::verify_hook_signature(
@@ -1247,9 +1249,21 @@ async fn hooks_are_posted_without_the_api_key_and_signed() {
     );
     assert_eq!(request.header("x-signature"), None);
     assert_eq!(request.text(), "a=1&b=2");
+    assert!(request.header("idempotency-key").is_some());
+
+    // A key in the request options wins over the event id.
+    let payload = HookPayload::bytes("{}", "application/json").event_id("order_1532");
+    client
+        .with_options(RequestOptions::new().idempotency_key("own"))
+        .send_hook("hk_tok", payload)
+        .await
+        .expect("accepted");
+    let request = mock.last();
+    assert_eq!(request.header("idempotency-key"), Some("own"));
+    assert_eq!(request.header("x-event-id"), Some("order_1532"));
 
     // An empty secret is an error, not an unsigned request.
     let payload = HookPayload::bytes("{}", "application/json").secret("");
     assert!(client.send_hook("hk_tok", payload).await.is_err());
-    assert_eq!(mock.count(), 2);
+    assert_eq!(mock.count(), 3);
 }

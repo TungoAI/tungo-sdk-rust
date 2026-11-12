@@ -538,7 +538,13 @@ impl Tungo {
             .filter(|_| request.idempotent && !explicit);
         let key = match own_key {
             Some(key) => Some(key.clone()),
-            None if request.idempotent && !explicit => Some(uuid::Uuid::new_v4().to_string()),
+            None if request.idempotent && !explicit => Some(
+                request
+                    .default_key
+                    .clone()
+                    .filter(|key| !key.is_empty())
+                    .unwrap_or_else(|| uuid::Uuid::new_v4().to_string()),
+            ),
             None => None,
         };
         if let Some(key) = &key {
