@@ -208,7 +208,7 @@ async fn main() -> tungo_sdk::Result<()> {
 
 ## Retries and timeouts
 
-A request is retried up to 2 times (3 attempts) on connection errors, timeouts and the statuses 408, 429, 500, 502, 503 and 504, but only when repeating it is safe: `GET`, `HEAD`, `PUT` and `DELETE` requests, and `POST` or `PATCH` requests that carry an `Idempotency-Key`. For the operations whose contract declares that header the SDK generates a random key and reuses it for every attempt; you can pass your own.
+A request is retried up to 2 times (3 attempts) on connection errors, timeouts and the statuses 408, 429, 500, 502, 503 and 504, but only when repeating it is safe: `GET`, `HEAD`, `PUT` and `DELETE` requests, and `POST` or `PATCH` requests of the operations whose contract declares an `Idempotency-Key`. For those the SDK generates a random key and reuses it for every attempt; you can pass your own. Other operations send no key, not even one you pass, because the API would ignore it.
 
 The delay between attempts is `min(0.5 s × 2^attempt, 8 s)` with random jitter. A positive `retry-after-ms` or `Retry-After` response header overrides it; if the server asks for more than 60 s the SDK does not wait and raises the error with the delay filled in.
 

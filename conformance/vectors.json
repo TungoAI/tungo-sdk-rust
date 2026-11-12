@@ -2745,6 +2745,46 @@
       "expect": {
         "retry": false
       }
+    },
+    {
+      "name": "POST with a caller key the operation does not declare, 502",
+      "method": "POST",
+      "idempotency_key": false,
+      "caller_key": true,
+      "cause": 502,
+      "expect": {
+        "retry": false
+      }
+    },
+    {
+      "name": "POST with a caller key the operation does not declare, timeout",
+      "method": "POST",
+      "idempotency_key": false,
+      "caller_key": true,
+      "cause": "timeout",
+      "expect": {
+        "retry": false
+      }
+    },
+    {
+      "name": "PATCH with a caller key the operation does not declare, 502",
+      "method": "PATCH",
+      "idempotency_key": false,
+      "caller_key": true,
+      "cause": 502,
+      "expect": {
+        "retry": false
+      }
+    },
+    {
+      "name": "PATCH with a caller key the operation does not declare, timeout",
+      "method": "PATCH",
+      "idempotency_key": false,
+      "caller_key": true,
+      "cause": "timeout",
+      "expect": {
+        "retry": false
+      }
     }
   ],
   "path_segment": [
