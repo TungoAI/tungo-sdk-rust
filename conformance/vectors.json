@@ -3732,5 +3732,194 @@
         ]
       }
     }
+  ],
+  "chat_stream_replay": [
+    {
+      "name": "finished turn repeated with the same Idempotency-Key: the stored result becomes the stream",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json; charset=UTF-8",
+        "Idempotent-Replayed": "true",
+        "x-request-id": "req_4f9c2a7e1b3d4c5a8e6f7a9b0c1d2e3f"
+      },
+      "body": {
+        "dialog_id": "0b5f6a0e-6a1c-4d55-9a57-2f1d8b9c3e10",
+        "turn_no": 3,
+        "answer": "**НДС** — 5 400 ₸.",
+        "proposals": [],
+        "pending_question": null,
+        "questions": [
+          {
+            "text": "Провести оплату сегодня?"
+          }
+        ],
+        "citations": [
+          {
+            "source": "НК РК ст. 422",
+            "title": "Ставка НДС"
+          }
+        ],
+        "errors": [],
+        "usage": {
+          "input_tokens": 1200,
+          "output_tokens": 85,
+          "cache_read_tokens": 900,
+          "cache_write_tokens": 0,
+          "cost_tiyn": 185
+        },
+        "stop_reason": "end_turn"
+      },
+      "expect": {
+        "dialog_id": "0b5f6a0e-6a1c-4d55-9a57-2f1d8b9c3e10",
+        "turn_no": 3,
+        "text": "**НДС** — 5 400 ₸.",
+        "stop_reason": "end_turn",
+        "event_count": 4,
+        "cost_tiyn": 185,
+        "usage": {
+          "input_tokens": 1200,
+          "output_tokens": 85,
+          "cache_read_tokens": 900,
+          "cache_write_tokens": 0
+        },
+        "choice_id": null,
+        "error": null,
+        "event_types": [
+          "text",
+          "question",
+          "citation",
+          "done"
+        ]
+      }
+    },
+    {
+      "name": "replayed turn that waits for the user: pending_question becomes choice",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json; charset=UTF-8",
+        "Idempotent-Replayed": "true",
+        "x-request-id": "req_4f9c2a7e1b3d4c5a8e6f7a9b0c1d2e3f"
+      },
+      "body": {
+        "dialog_id": "0b5f6a0e-6a1c-4d55-9a57-2f1d8b9c3e10",
+        "turn_no": 4,
+        "answer": "Уточните период.",
+        "proposals": [],
+        "pending_question": {
+          "choice_id": "ch_01",
+          "questions": [
+            {
+              "question": "За какой квартал?",
+              "header": "Период",
+              "options": [
+                {
+                  "label": "III квартал",
+                  "description": "Июль — сентябрь"
+                },
+                {
+                  "label": "IV квартал",
+                  "description": "Октябрь — декабрь"
+                }
+              ],
+              "multi_select": false
+            }
+          ]
+        },
+        "questions": [],
+        "citations": [],
+        "errors": [],
+        "stop_reason": "awaiting_user"
+      },
+      "expect": {
+        "dialog_id": "0b5f6a0e-6a1c-4d55-9a57-2f1d8b9c3e10",
+        "turn_no": 4,
+        "text": "Уточните период.",
+        "stop_reason": "awaiting_user",
+        "event_count": 3,
+        "cost_tiyn": null,
+        "usage": null,
+        "choice_id": "ch_01",
+        "error": null,
+        "event_types": [
+          "text",
+          "choice",
+          "done"
+        ]
+      }
+    },
+    {
+      "name": "replayed turn that failed: each entry of errors becomes an error event with the request id",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json; charset=UTF-8",
+        "Idempotent-Replayed": "true",
+        "x-request-id": "req_4f9c2a7e1b3d4c5a8e6f7a9b0c1d2e3f"
+      },
+      "body": {
+        "dialog_id": "0b5f6a0e-6a1c-4d55-9a57-2f1d8b9c3e10",
+        "turn_no": 5,
+        "answer": "",
+        "proposals": [],
+        "pending_question": null,
+        "questions": [],
+        "citations": [],
+        "errors": [
+          {
+            "type": "limit_error",
+            "code": "budget",
+            "message": "Дневной лимит исчерпан.",
+            "can_request_more": true,
+            "limit_kind": "day"
+          }
+        ],
+        "stop_reason": "budget"
+      },
+      "expect": {
+        "dialog_id": "0b5f6a0e-6a1c-4d55-9a57-2f1d8b9c3e10",
+        "turn_no": 5,
+        "text": "",
+        "stop_reason": "budget",
+        "event_count": 2,
+        "cost_tiyn": null,
+        "usage": null,
+        "choice_id": null,
+        "error": {
+          "type": "limit_error",
+          "code": "budget",
+          "message": "Дневной лимит исчерпан.",
+          "request_id": "req_4f9c2a7e1b3d4c5a8e6f7a9b0c1d2e3f",
+          "extra": {
+            "can_request_more": true,
+            "limit_kind": "day"
+          }
+        },
+        "event_types": [
+          "error",
+          "done"
+        ]
+      }
+    },
+    {
+      "name": "JSON success without Idempotent-Replayed is not a stream",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json",
+        "x-request-id": "req_4f9c2a7e1b3d4c5a8e6f7a9b0c1d2e3f"
+      },
+      "body": {
+        "dialog_id": "0b5f6a0e-6a1c-4d55-9a57-2f1d8b9c3e10",
+        "turn_no": 3,
+        "answer": "Готово",
+        "proposals": [],
+        "pending_question": null,
+        "questions": [],
+        "citations": [],
+        "errors": [],
+        "stop_reason": "end_turn"
+      },
+      "expect": {
+        "decode_error": true
+      }
+    }
   ]
 }

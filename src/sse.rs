@@ -287,17 +287,30 @@ pub struct EventStream<T> {
     marker: PhantomData<fn() -> T>,
 }
 
+/// Where the events of a stream come from.
+pub(crate) enum StreamBody {
+    /// The open response of the server.
+    Live(reqwest::Response),
+    /// A complete event stream held in memory: the events of a chat turn
+    /// replayed by Idempotency-Key.
+    Replayed(Vec<u8>),
+}
+
 impl<T> EventStream<T> {
-    pub(crate) fn new(
-        response: reqwest::Response,
-        meta: ResponseMeta,
-        idle_timeout: Duration,
-    ) -> Self {
+    pub(crate) fn new(body: StreamBody, meta: ResponseMeta, idle_timeout: Duration) -> Self {
+        let events = match body {
+            StreamBody::Live(response) => raw_events(response, idle_timeout),
+            StreamBody::Replayed(bytes) => {
+                let mut parser = SseParser::new();
+                let mut events = parser.feed(&bytes);
+                events.extend(parser.finish());
+                let events: BoxStream<Result<SseEvent>> =
+                    Box::pin(futures_util::stream::iter(events.into_iter().map(Ok)));
+                events
+            }
+        };
         EventStream {
-            raw: RawEventStream {
-                events: raw_events(response, idle_timeout),
-                meta,
-            },
+            raw: RawEventStream { events, meta },
             last_event_id: None,
             marker: PhantomData,
         }

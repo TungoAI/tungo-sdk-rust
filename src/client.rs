@@ -17,7 +17,7 @@ use crate::request::{
 };
 use crate::response::{snippet, RawResponse, Response, ResponseMeta};
 use crate::retry::{self, FailureCause, RetryDecision};
-use crate::sse::EventStream;
+use crate::sse::{EventStream, StreamBody};
 
 /// The default timeout of an ordinary call.
 pub const DEFAULT_TIMEOUT: Duration = Duration::from_secs(60);
@@ -432,8 +432,8 @@ impl Tungo {
         request: Request,
     ) -> Result<EventStream<T>> {
         let prepared = self.prepare(request, true)?;
-        let (response, meta) = self.open_stream(&prepared).await?;
-        Ok(EventStream::new(response, meta, prepared.idle_timeout))
+        let (body, meta) = self.open_stream(&prepared).await?;
+        Ok(EventStream::new(body, meta, prepared.idle_timeout))
     }
 
     /// Sends a list request and returns one page that can fetch the next one.
@@ -635,7 +635,7 @@ impl Tungo {
 
     /// Opens a streaming response. Retries happen only here, before the
     /// first byte of the stream is handed to the caller.
-    async fn open_stream(&self, prepared: &Prepared) -> Result<(reqwest::Response, ResponseMeta)> {
+    async fn open_stream(&self, prepared: &Prepared) -> Result<(StreamBody, ResponseMeta)> {
         let idle = prepared.idle_timeout;
         let what = format!("the stream did not start within {idle:?}");
         let mut attempt = 0u32;
@@ -648,8 +648,38 @@ impl Tungo {
             }
             let failure = match opening {
                 Ok(mut response) if response.status().is_success() => {
-                    let meta =
-                        ResponseMeta::new(response.status().as_u16(), response.headers().clone());
+                    let status = response.status().as_u16();
+                    let mut headers = response.headers().clone();
+                    if is_replayed_json(&headers) {
+                        // A chat turn repeated with the same Idempotency-Key after it
+                        // finished: the server answers the stored ChatTurnResult instead
+                        // of a stream. The caller gets the events of that turn.
+                        let body = deadline(idle, &what, response.bytes()).await?;
+                        let request_id = headers
+                            .get("x-request-id")
+                            .and_then(|value| value.to_str().ok())
+                            .filter(|value| !value.is_empty())
+                            .map(str::to_owned);
+                        return match replay_as_event_stream(
+                            &body,
+                            request_id.as_deref(),
+                            &mut headers,
+                        ) {
+                            Some(events) => Ok((
+                                StreamBody::Replayed(events),
+                                ResponseMeta::new(status, headers),
+                            )),
+                            None => Err(Error::Decode {
+                                message: "the replayed response is not a chat turn result"
+                                    .to_owned(),
+                                status: Some(status),
+                                request_id,
+                                body: snippet(&body),
+                                source: None,
+                            }),
+                        };
+                    }
+                    let meta = ResponseMeta::new(status, headers);
                     let content_type = meta.header("content-type").unwrap_or("").to_owned();
                     if !is_event_stream(&content_type) {
                         // A success that is not a stream (a JSON answer, a proxy
@@ -668,7 +698,7 @@ impl Tungo {
                             source: None,
                         });
                     }
-                    return Ok((response, meta));
+                    return Ok((StreamBody::Live(response), meta));
                 }
                 Ok(response) => {
                     let status = response.status().as_u16();
@@ -731,6 +761,123 @@ impl Failure {
 fn is_event_stream(content_type: &str) -> bool {
     let media_type = content_type.split(';').next().unwrap_or("");
     media_type.trim().eq_ignore_ascii_case("text/event-stream")
+}
+
+/// Whether the answer to a stream call is a stored result replayed by
+/// Idempotency-Key: `application/json` with `Idempotent-Replayed: true`.
+fn is_replayed_json(headers: &HeaderMap) -> bool {
+    let header = |name: &str| {
+        headers
+            .get(name)
+            .and_then(|value| value.to_str().ok())
+            .unwrap_or("")
+    };
+    let media_type = header("content-type").split(';').next().unwrap_or("");
+    media_type.trim().eq_ignore_ascii_case("application/json")
+        && header("idempotent-replayed")
+            .trim()
+            .eq_ignore_ascii_case("true")
+}
+
+/// Turns a replayed `ChatTurnResult` into the event stream of the turn it
+/// stands for: text (the answer), proposal, question, citation, error and
+/// choice events, then done. The dialog id and the turn number, which a
+/// replay carries only in the body, become the `X-Dialog-Id` and `X-Turn-No`
+/// headers when they are missing. `None` when the body is not a chat turn
+/// result.
+fn replay_as_event_stream(
+    body: &[u8],
+    request_id: Option<&str>,
+    headers: &mut HeaderMap,
+) -> Option<Vec<u8>> {
+    use serde_json::{Map, Value};
+
+    fn push(out: &mut Vec<u8>, kind: &str, mut event: Map<String, Value>) {
+        event.insert("type".to_owned(), Value::String(kind.to_owned()));
+        out.extend_from_slice(b"event: ");
+        out.extend_from_slice(kind.as_bytes());
+        out.extend_from_slice(b"\ndata: ");
+        out.extend_from_slice(Value::Object(event).to_string().as_bytes());
+        out.extend_from_slice(b"\n\n");
+    }
+
+    let Ok(Value::Object(result)) = serde_json::from_slice::<Value>(body) else {
+        return None;
+    };
+    let dialog_id = result.get("dialog_id")?.as_str()?;
+    let missing =
+        |headers: &HeaderMap, name: &str| headers.get(name).is_none_or(HeaderValue::is_empty);
+    if missing(headers, "x-dialog-id") {
+        if let Ok(value) = HeaderValue::from_str(dialog_id) {
+            headers.insert(HeaderName::from_static("x-dialog-id"), value);
+        }
+    }
+    if let Some(turn_no) = result.get("turn_no").and_then(Value::as_u64) {
+        if missing(headers, "x-turn-no") {
+            headers.insert(
+                HeaderName::from_static("x-turn-no"),
+                HeaderValue::from(turn_no),
+            );
+        }
+    }
+    let entries = |key: &str| -> Vec<Map<String, Value>> {
+        result
+            .get(key)
+            .and_then(Value::as_array)
+            .map(|items| items.iter().filter_map(Value::as_object).cloned().collect())
+            .unwrap_or_default()
+    };
+
+    let mut out = Vec::new();
+    let answer = result.get("answer").and_then(Value::as_str).unwrap_or("");
+    if !answer.is_empty() {
+        let mut text = Map::new();
+        text.insert("delta".to_owned(), Value::String(answer.to_owned()));
+        push(&mut out, "text", text);
+    }
+    for mut proposal in entries("proposals") {
+        let id = proposal.remove("id").unwrap_or(Value::Null);
+        proposal.insert("proposal_id".to_owned(), id);
+        push(&mut out, "proposal", proposal);
+    }
+    for question in entries("questions") {
+        push(&mut out, "question", question);
+    }
+    for citation in entries("citations") {
+        push(&mut out, "citation", citation);
+    }
+    for error in entries("errors") {
+        let mut event = Map::new();
+        event.insert("error".to_owned(), Value::Object(error));
+        event.insert(
+            "request_id".to_owned(),
+            request_id.map_or(Value::Null, |id| Value::String(id.to_owned())),
+        );
+        push(&mut out, "error", event);
+    }
+    let mut done = Map::new();
+    done.insert("answer".to_owned(), Value::String(answer.to_owned()));
+    if let Some(reason) = result
+        .get("stop_reason")
+        .filter(|reason| reason.is_string())
+    {
+        done.insert("stop_reason".to_owned(), reason.clone());
+    }
+    if let Some(usage) = result.get("usage").and_then(Value::as_object) {
+        let mut tokens = usage.clone();
+        if let Some(cost) = tokens.remove("cost_tiyn") {
+            done.insert("cost_tiyn".to_owned(), cost);
+        }
+        done.insert("usage".to_owned(), Value::Object(tokens));
+    }
+    if let Some(pending) = result.get("pending_question").and_then(Value::as_object) {
+        push(&mut out, "choice", pending.clone());
+        if let Some(choice_id) = pending.get("choice_id") {
+            done.insert("choice_id".to_owned(), choice_id.clone());
+        }
+    }
+    push(&mut out, "done", done);
+    Some(out)
 }
 
 /// The error for a response that came from another origin than the request

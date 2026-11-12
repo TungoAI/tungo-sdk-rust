@@ -2,6 +2,8 @@
 //! (`conformance/vectors.json`) against the SDK. Each test checks that it
 //! ran at least one case, so an empty or renamed section fails loudly.
 
+mod common;
+
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use base64::engine::general_purpose::STANDARD;
@@ -14,11 +16,13 @@ use tungo_sdk::retry::{
     JITTER_MIN,
 };
 use tungo_sdk::sse::{decode_event, parse_sse, SseEvent, SseParser};
-use tungo_sdk::types::{ChatEvent, WebhookEvent};
+use tungo_sdk::types::{ChatEvent, ChatMessageRequest, WebhookEvent};
 use tungo_sdk::webhooks::{
     hook_signature_header, sign_hook_payload, verify_hook_signature, WebhookVerifier,
 };
-use tungo_sdk::{ApiError, ApiErrorKind, ChatAccumulator, HeaderMap, Method, ResponseMeta};
+use tungo_sdk::{
+    ApiError, ApiErrorKind, ChatAccumulator, Error, HeaderMap, Method, ResponseMeta, StreamExt,
+};
 
 const VECTORS: &str = include_str!(concat!(
     env!("CARGO_MANIFEST_DIR"),
@@ -564,74 +568,132 @@ fn chat_stream() {
             }
         }
         let turn = accumulator.finish();
-        let expect = &case["expect"];
+        check_chat_turn(label, status, &turn, &case["expect"]);
+    }
+}
 
-        // Only a turn that saw its `done` event is complete.
-        if let Some(types) = expect.get("event_types").and_then(Value::as_array) {
-            let has_done = types.iter().any(|kind| kind == "done");
-            assert_eq!(turn.done, has_done, "{label}");
+/// Checks a chat turn folded from a stream against `expect` of a
+/// `chat_stream` (or `chat_stream_replay`) case.
+fn check_chat_turn(label: &str, status: u16, turn: &tungo_sdk::ChatTurn, expect: &Value) {
+    // Only a turn that saw its `done` event is complete.
+    if let Some(types) = expect.get("event_types").and_then(Value::as_array) {
+        let has_done = types.iter().any(|kind| kind == "done");
+        assert_eq!(turn.done, has_done, "{label}");
+    }
+    assert_eq!(
+        turn.dialog_id.as_deref(),
+        expect["dialog_id"].as_str(),
+        "{label}"
+    );
+    assert_eq!(turn.turn_no, expect["turn_no"].as_u64(), "{label}");
+    assert_eq!(turn.text, text(expect, "text"), "{label}");
+    assert_eq!(
+        turn.stop_reason.as_deref(),
+        expect["stop_reason"].as_str(),
+        "{label}"
+    );
+    assert_eq!(
+        Some(turn.events.len() as u64),
+        expect["event_count"].as_u64(),
+        "{label}"
+    );
+    assert_eq!(turn.cost_tiyn, expect["cost_tiyn"].as_i64(), "{label}");
+    assert_eq!(
+        turn.choice_id.as_deref(),
+        expect["choice_id"].as_str(),
+        "{label}"
+    );
+    let usage = serde_json::to_value(&turn.usage).expect("usage");
+    assert_eq!(usage, expect["usage"], "{label}");
+    if let Some(types) = expect.get("event_types").and_then(Value::as_array) {
+        let seen: Vec<Value> = turn
+            .events
+            .iter()
+            .map(|event| event.tag().map_or(Value::Null, Value::from))
+            .collect();
+        assert_eq!(&seen, types, "{label}");
+    }
+    match (&turn.error, &expect["error"]) {
+        (None, Value::Null) => {}
+        (Some(error), Value::Object(expected)) => {
+            assert_eq!(
+                Some(error.error_type.as_str()),
+                expected["type"].as_str(),
+                "{label}"
+            );
+            assert_eq!(error.code.as_deref(), expected["code"].as_str(), "{label}");
+            assert_eq!(
+                Some(error.message.as_str()),
+                expected["message"].as_str(),
+                "{label}"
+            );
+            assert_eq!(
+                error.request_id.as_deref(),
+                expected["request_id"].as_str(),
+                "{label}"
+            );
+            assert_eq!(
+                Value::Object(error.extra.clone()),
+                expected["extra"],
+                "{label}"
+            );
+            assert_eq!(error.status, status, "{label}");
         }
-        assert_eq!(
-            turn.dialog_id.as_deref(),
-            expect["dialog_id"].as_str(),
-            "{label}"
-        );
-        assert_eq!(turn.turn_no, expect["turn_no"].as_u64(), "{label}");
-        assert_eq!(turn.text, text(expect, "text"), "{label}");
-        assert_eq!(
-            turn.stop_reason.as_deref(),
-            expect["stop_reason"].as_str(),
-            "{label}"
-        );
-        assert_eq!(
-            Some(turn.events.len() as u64),
-            expect["event_count"].as_u64(),
-            "{label}"
-        );
-        assert_eq!(turn.cost_tiyn, expect["cost_tiyn"].as_i64(), "{label}");
-        assert_eq!(
-            turn.choice_id.as_deref(),
-            expect["choice_id"].as_str(),
-            "{label}"
-        );
-        let usage = serde_json::to_value(&turn.usage).expect("usage");
-        assert_eq!(usage, expect["usage"], "{label}");
-        if let Some(types) = expect.get("event_types").and_then(Value::as_array) {
-            let seen: Vec<Value> = turn
-                .events
-                .iter()
-                .map(|event| event.tag().map_or(Value::Null, Value::from))
-                .collect();
-            assert_eq!(&seen, types, "{label}");
-        }
-        match (&turn.error, &expect["error"]) {
-            (None, Value::Null) => {}
-            (Some(error), Value::Object(expected)) => {
-                assert_eq!(
-                    Some(error.error_type.as_str()),
-                    expected["type"].as_str(),
-                    "{label}"
-                );
-                assert_eq!(error.code.as_deref(), expected["code"].as_str(), "{label}");
-                assert_eq!(
-                    Some(error.message.as_str()),
-                    expected["message"].as_str(),
-                    "{label}"
-                );
-                assert_eq!(
-                    error.request_id.as_deref(),
-                    expected["request_id"].as_str(),
-                    "{label}"
-                );
-                assert_eq!(
-                    Value::Object(error.extra.clone()),
-                    expected["extra"],
-                    "{label}"
-                );
-                assert_eq!(error.status, status, "{label}");
+        (error, expected) => panic!("{label}: error {error:?}, expected {expected}"),
+    }
+}
+
+/// A stream call repeated with the same Idempotency-Key after its turn
+/// finished is answered with the stored `ChatTurnResult` as JSON: the stream
+/// must yield the events of that turn, not a decode error.
+#[tokio::test]
+async fn chat_stream_replay() {
+    let replays = cases("chat_stream_replay");
+    for case in replays {
+        let label = name(&case).to_owned();
+        let status = u16::try_from(case["status"].as_u64().expect("status")).expect("status");
+        let headers: Vec<(String, String)> = case["headers"]
+            .as_object()
+            .expect("headers")
+            .iter()
+            .map(|(key, value)| {
+                (
+                    key.to_lowercase(),
+                    value.as_str().expect("header").to_owned(),
+                )
+            })
+            .collect();
+        let body = serde_json::to_vec(&case["body"]).expect("body");
+        let mock = common::Mock::start(move |_, _| common::Reply::Full {
+            status,
+            headers: headers.clone(),
+            body: body.clone(),
+        })
+        .await;
+        let opened = mock
+            .client()
+            .chat()
+            .create_stream(&ChatMessageRequest {
+                message: Some("?".to_owned()),
+                ..Default::default()
+            })
+            .await;
+        let expect = &case["expect"];
+        if expect["decode_error"] == Value::Bool(true) {
+            match opened {
+                Err(Error::Decode {
+                    status: Some(got), ..
+                }) => assert_eq!(got, status, "{label}"),
+                other => panic!("{label}: want a decode error, got {:?}", other.map(|_| ())),
             }
-            (error, expected) => panic!("{label}: error {error:?}, expected {expected}"),
+            continue;
         }
+        let mut stream = opened.unwrap_or_else(|error| panic!("{label}: {error}"));
+        let mut accumulator = ChatAccumulator::new(stream.response());
+        while let Some(event) = stream.next().await {
+            accumulator.push(event.unwrap_or_else(|error| panic!("{label}: {error}")));
+        }
+        check_chat_turn(&label, status, &accumulator.finish(), expect);
     }
 }
 
@@ -654,6 +716,7 @@ fn every_section_is_covered() {
         "query",
         "sse",
         "chat_stream",
+        "chat_stream_replay",
     ];
     let root = vectors();
     for key in root.as_object().expect("vectors.json is an object").keys() {
