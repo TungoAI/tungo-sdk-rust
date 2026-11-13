@@ -17,8 +17,10 @@ Generated from the platform contract of backend main cf931af. It contains breaki
 
 - `Company.legal_form` and `CompanyListItem.legal_form` can be null: the legal form of a company is not set yet (it is set with `PATCH /v1/companies/{co}`). The field is now nullable or optional in every SDK (`CompanyLegalForm | null`, `Optional[CompanyLegalForm]`, `*CompanyLegalForm`, `Option<CompanyLegalForm>`, `Optional<CompanyLegalForm>`, `CompanyLegalForm?`).
 - `ApiKeyRolled.key` is null when a key roll is replayed by `Idempotency-Key`; the new `key_note` says why and what to do if the new secret was lost. The field is now nullable in every SDK.
-- `ApiKeyCreate.permissions` is optional (a key with `no_companies: true` gets no company permissions). Constructors and builders no longer require it (Rust: `ApiKeyCreate::new(name)`), accessors return an optional value, and Go no longer sends `[]` for a nil list.
+- `ApiKeyCreate.permissions` is optional (a key with `no_companies: true` gets no company permissions). Constructors and builders no longer require it (Rust: `ApiKeyCreate::new(name)`), accessors return an optional value, and Go leaves the field out for a nil list instead of sending `[]`.
 - New union variants: `ChatEvent` gains `next` (`ChatEventNext`) and `title` (`ChatEventTitle`), `ChatHistoryBlock` gains `batch` (`ChatHistoryBatch`). An exhaustive `switch`/`when`/`match` over these unions needs the new cases.
+- PHP and Kotlin: `proposals.list` and `listAll` gained the optional filters `approval_requested`, `batch_id` and `source` before existing parameters, so positional arguments after the company shift. Pass these parameters by name (PHP named arguments, Kotlin named arguments).
+- An `Idempotency-Key` is sent only to operations that declare it: a caller's own `Idempotency-Key` on any other operation is no longer sent, and no longer makes a POST retryable. Approving a proposal uses the `idempotency_key` of the body as the header instead of generating one.
 - Response models gained required fields (`no_companies` on the `ApiKey*` models; `title_source` on `ChatDialog`, `ChatDialogSummary` and `ChatDialogRenamed`; `followups` and `next_action` on `ChatAssistantMessage` and `ChatTurnResult`; `approval_request`, `origin` and `status_reason` on `ProposalCard` and `ProposalListItem`; `approval_requested_count` on `ProposalPage`; `object` on `AuditEntry`; `statement` on `BatchSummary`; `total` and `total_more` on the platform audit and request lists; and others). Decoding is unaffected; code that constructs these models itself (test fakes) must pass the new fields.
 
 ### Added
@@ -35,7 +37,6 @@ Generated from the platform contract of backend main cf931af. It contains breaki
 
 ### Fixed
 
-- An `Idempotency-Key` is sent only to operations that declare it; approving a proposal uses the `idempotency_key` of the body as the header instead of generating one.
 - A chat turn replayed by `Idempotency-Key`, including a stream call retried after a 502, arrives as its events; Python typed streams expose `last_event_id` for resuming.
 - A replayed chat turn keeps its follow-ups and next action: when the stored result has `followups` or a `next_action`, the rebuilt stream yields the `next` event right before `done`, as a live turn does.
 - An `error` event of the feed stream ends the stream with a typed error; Kotlin delivers the event that the end of a stream completes.
