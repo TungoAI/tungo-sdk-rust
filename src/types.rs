@@ -4582,7 +4582,7 @@ impl ChatDialogPatch {
 }
 
 /// Оценка разговора после изменения
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[non_exhaustive]
 pub struct ChatDialogRated {
     /// id разговора (обычно UUID): по нему продолжают разговор (dialog_id), открывают его GET …/chat/{id} и стирают
@@ -4590,16 +4590,6 @@ pub struct ChatDialogRated {
     pub rating: ChatDialogRating,
     /// Всегда false: предлагать больше не нужно
     pub rating_prompt: bool,
-}
-
-impl Default for ChatDialogRated {
-    fn default() -> Self {
-        Self {
-            id: Default::default(),
-            rating: Default::default(),
-            rating_prompt: false,
-        }
-    }
 }
 
 /// Оценка разговора человеком
@@ -5699,22 +5689,13 @@ pub struct ChatQuestion {
 }
 
 /// Предложение оценить закрыто
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[non_exhaustive]
 pub struct ChatRatingDismissed {
     /// id разговора (обычно UUID): по нему продолжают разговор (dialog_id), открывают его GET …/chat/{id} и стирают
     pub id: String,
     /// Всегда false
     pub rating_prompt: bool,
-}
-
-impl Default for ChatRatingDismissed {
-    fn default() -> Self {
-        Self {
-            id: Default::default(),
-            rating_prompt: false,
-        }
-    }
 }
 
 /// Настройки формы оценки
