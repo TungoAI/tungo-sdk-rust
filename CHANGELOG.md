@@ -9,6 +9,48 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.0] - Unreleased
+
+Generated from the platform contract of backend main cf931af. It contains breaking type changes compared with 0.2.0.
+
+### Breaking
+
+- `Company.legal_form` and `CompanyListItem.legal_form` can be null: the legal form of a company is not set yet (it is set with `PATCH /v1/companies/{co}`). The field is now nullable or optional in every SDK (`CompanyLegalForm | null`, `Optional[CompanyLegalForm]`, `*CompanyLegalForm`, `Option<CompanyLegalForm>`, `Optional<CompanyLegalForm>`, `CompanyLegalForm?`).
+- `ApiKeyRolled.key` is null when a key roll is replayed by `Idempotency-Key`; the new `key_note` says why and what to do if the new secret was lost. The field is now nullable in every SDK.
+- `ApiKeyCreate.permissions` is optional (a key with `no_companies: true` gets no company permissions). Constructors and builders no longer require it (Rust: `ApiKeyCreate::new(name)`), accessors return an optional value, and Go no longer sends `[]` for a nil list.
+- New union variants: `ChatEvent` gains `next` (`ChatEventNext`) and `title` (`ChatEventTitle`), `ChatHistoryBlock` gains `batch` (`ChatHistoryBatch`). An exhaustive `switch`/`when`/`match` over these unions needs the new cases.
+- Response models gained required fields (`no_companies` on the `ApiKey*` models; `title_source` on `ChatDialog`, `ChatDialogSummary` and `ChatDialogRenamed`; `followups` and `next_action` on `ChatAssistantMessage` and `ChatTurnResult`; `approval_request`, `origin` and `status_reason` on `ProposalCard` and `ProposalListItem`; `approval_requested_count` on `ProposalPage`; `object` on `AuditEntry`; `statement` on `BatchSummary`; `total` and `total_more` on the platform audit and request lists; and others). Decoding is unaffected; code that constructs these models itself (test fakes) must pass the new fields.
+
+### Added
+
+- `chat.list_mentions` (`GET /v1/companies/{co}/chat/mentions`): finds proposals, batches and counterparties to mention in a question (`ChatMentionSearch`, `ChatMentionItem`, `ChatMentionUnavailable`). Questions take `mentions` (`ChatMention`), and history shows them (`ChatUserMessage.mentions`, `ChatHistoryMention`).
+- `chat.list_suggestions` (`GET /v1/companies/{co}/chat/suggestions`, `lang` `ru` or `kk`): suggested questions grouped by topic (`ChatSuggestions`, `ChatSuggestionGroup`, `ChatSuggestion` with `code`, `action`, `title`, `hint`, `prompt` and `seasonal`).
+- `proposals.request_approval` (`POST /v1/companies/{co}/proposals/{id}/request-approval`, optional `note`): asks the people who may approve a proposal to look at it (`ProposalApprovalRequestResult`). Proposals carry `approval_request` (`ProposalApprovalRequest`, `ProposalApprovalRequested`), `origin` (`ProposalOrigin`) and `status_reason`; `proposals.list` filters by `approval_requested`, `batch_id` and `source`; `ProposalHistoryEvent.code`.
+- Chat: the dialog title has a `title_source` (`ChatTitleSource`: `first_message`, `ai`, `user`) and a `title` stream event (`ChatEventTitle`, sent to cabinet sessions only); a turn ends with suggested follow-ups and a next action (`followups`, `next_action`, `ChatNextAction`, event `next`); questions take `effort` (`low` to `max`); choice questions have `confirm`, answers `skipped`, and history shows the answer (`ChatHistoryQuestion.answer`); history shows batch jobs (`ChatHistoryBatch`).
+- Batches: `BatchSummary.statement` describes a parsed bank statement by account (`BatchStatement`, `BatchStatementAccount`).
+- Errors: `ErrorDetail` gains `free_blocked_reason`, `retry_after_seconds`, `next_request_at`, `amount_tiyn` and `payment_id`; chat turn errors gain the code `parallel_turns_limit` and limit kinds `disabled`, `meter`, `plan` and `turn`.
+- API keys: `no_companies` on the API key models, on `ApiKeyCreate` and on `ApiKeyPatch`; `ApiKeyRolled.key_note`.
+- Platform: `total` and `total_more` on the audit and request lists; `PlatformRequest.cost_tiyn`; `PlatformLedgerEntry.documents` (invoice, act and receipt); `PlatformAccountPurchaseLimits.today_tiyn`; `UsageRate.title` and `UsageRate.cache_write_1h_per_mtok_tiyn`; `AuditEntry.object` (`AuditEntryObject`) and new audit actions.
+- Billing models used by the cabinet: `CardSessionState`, `CardSession.test_mode`, `PayForm.test_mode`.
+
+### Fixed
+
+- An `Idempotency-Key` is sent only to operations that declare it; approving a proposal uses the `idempotency_key` of the body as the header instead of generating one.
+- A chat turn replayed by `Idempotency-Key`, including a stream call retried after a 502, arrives as its events; Python typed streams expose `last_event_id` for resuming.
+- An `error` event of the feed stream ends the stream with a typed error; Kotlin delivers the event that the end of a stream completes.
+- Incoming hooks: the event id is the default `Idempotency-Key` (a caller's own header wins), and the signature goes into the hook's own `signature_header`.
+- Webhook verification treats an infinite tolerance as `invalid_tolerance`.
+- Money: the exponent of a decimal is bounded before it is converted to tiyn.
+- Bad header values and base URLs fail locally without a request; transport and timeout errors no longer include the URL (Go, TypeScript); a decode error's debug output does not show the body (Rust).
+- TypeScript: error paths serialise `bigint` safely and keep 64-bit extra fields exact; `debugJSON` returns `''` for a value JSON cannot express.
+- Python: a `datetime` passed for a calendar-date parameter is sent as its date.
+- Go: `UploadBankStatement` sends text that is not UTF-8 as the file instead of failing.
+- Java: `close()` fails the asynchronous calls still waiting in the owned pool; `Retry-After` reads the RFC 850 date with a two-digit year; a key or header value with a control character is never quoted; error envelope fields are read in a way that works with Jackson 2.14, the documented minimum.
+- PHP: `sendHook` reads the headers of optional request options null-safely.
+- Ruby: the percent-encoded credentials of an explicit proxy are decoded.
+- Swift: the `URLSession` of the SDK has no URL cache.
+- .NET: a custom platform handler that follows redirects, or whose redirect setting cannot be read, is refused.
+
 ## [0.2.0] - 2026-11-12
 
 First production-ready release. It contains breaking changes compared with 0.1.0; 0.1.0 should not be used.
@@ -29,6 +71,7 @@ First production-ready release. It contains breaking changes compared with 0.1.0
 
 Initial preview. Not suitable for production use.
 
-[Unreleased]: https://github.com/TungoAI/tungo-sdk-rust/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/TungoAI/tungo-sdk-rust/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/TungoAI/tungo-sdk-rust/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/TungoAI/tungo-sdk-rust/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/TungoAI/tungo-sdk-rust/releases/tag/v0.1.0

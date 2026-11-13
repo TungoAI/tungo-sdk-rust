@@ -4,10 +4,10 @@
 
 /// The version of the SDK. It is the version in `Cargo.toml`; the release
 /// script rewrites both together.
-pub const VERSION: &str = "0.2.0"; // x-release-version
+pub const VERSION: &str = "0.3.0"; // x-release-version
 
 /// The `User-Agent` of every request.
-pub(crate) const USER_AGENT: &str = "tungo-sdk-rust/0.2.0"; // x-release-version
+pub(crate) const USER_AGENT: &str = "tungo-sdk-rust/0.3.0"; // x-release-version
 
 /// The base URL used when none is configured.
 pub const DEFAULT_BASE_URL: &str = "https://api.tungo.kz";
@@ -17,4 +17,4 @@ pub const CONTRACT_VERSION: &str = "0.1.0";
 
 /// The SHA-256 of the API contract this SDK was generated from.
 pub const CONTRACT_SHA256: &str =
-    "498c534d5c4bdb181d61dc7bdc778077059aeff0e9fb25b44dcf83391e178951";
+    "72a34292e20222182e0160e45110fff544e1bd7ef7f8a0705e50b78e055b324d";

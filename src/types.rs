@@ -45,7 +45,7 @@ pub struct ApiKey {
     pub all_companies: bool,
     /// С каких IP и подсетей CIDR ключ работает; с другого адреса — 403 ip_not_allowed. null — с любых
     pub allowed_ips: Option<Vec<String>>,
-    /// Компании, к которым ключ даёт доступ (co_…); пусто у ключа на все компании (all_companies)
+    /// Компании, к которым ключ даёт доступ (co_…); пусто у ключа на все компании (all_companies) и у ключа без компаний (no_companies)
     pub company_ids: Vec<String>,
     /// Когда выпущен, ISO 8601 UTC
     pub created_at: String,
@@ -65,6 +65,8 @@ pub struct ApiKey {
     pub monthly_cap_tiyn: Option<i64>,
     /// Название ключа для людей
     pub name: String,
+    /// Ключ без доступа к компаниям и их 1С: company_ids пуст, all_companies = false; компаний не видит никогда. Пустой company_ids сам по себе вида не называет — смотреть на all_companies и no_companies
+    pub no_companies: bool,
     /// Права ключа: `company.read` — читать данные компаний (есть всегда); `chat.use` — работать с ИИ-бухгалтером; `proposals.create` — готовить документы для 1С; `proposals.approve` — одобрять запись в 1С; `automations.read` — видеть автоматизации; `automations.manage` — менять и запускать автоматизации; `webhooks.manage` — вебхуки всей организации
     pub permissions: Vec<ApiKeyPermissionItem>,
     /// Открытая часть ключа для показа — узнать ключ среди других; сам ключ (tg_…_секрет) целиком не хранится
@@ -105,8 +107,12 @@ pub struct ApiKeyCreate {
     pub monthly_cap_tiyn: Option<Option<i64>>,
     /// Название ключа для людей (1–100 знаков): где он используется
     pub name: String,
-    /// Права ключа (1–20): `company.read` — читать данные компаний (добавляется всегда, даже если не передано); `chat.use` — работать с ИИ-бухгалтером; `proposals.create` — готовить документы для 1С; `proposals.approve` — одобрять запись документов в 1С; `automations.read` — видеть хуки, сценарии и журнал запусков; `automations.manage` — менять и запускать автоматизации; `webhooks.manage` — вебхуки всей организации (только у ключа на все её компании). Ни одно право не шире прав создателя
-    pub permissions: Vec<String>,
+    /// Ключ без доступа к компаниям и их 1С: ни одной компании он не видит — ни сейчас, ни будущих; company_ids и all_companies не передаются, права — только company.read (он ничего не открывает). По умолчанию false
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub no_companies: Option<bool>,
+    /// Права ключа (1–20): `company.read` — читать данные компаний (добавляется всегда, даже если не передано); `chat.use` — работать с ИИ-бухгалтером; `proposals.create` — готовить документы для 1С; `proposals.approve` — одобрять запись документов в 1С; `automations.read` — видеть хуки, сценарии и журнал запусков; `automations.manage` — менять и запускать автоматизации; `webhooks.manage` — вебхуки всей организации (только у ключа на все её компании). Ни одно право не шире прав создателя. Обязательно, кроме ключа с no_companies: true (ему права в компаниях не даются)
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub permissions: Option<Vec<String>>,
     /// Предел записи в 1С по ключу: какие виды документов ключ может одобрять (как kinds правила автоодобрения: sale, purchase, bank_receipt, bank_payment, counterparty, contract, inventory_writeoff, cash_order_in, cash_order_out, advance_report, revert). null — любые. Без всех трёх пределов ключ с proposals.approve пишет в 1С без ограничений — тогда в ответе предупреждение write_unlimited. При изменении: не передан — не меняется; снять или добавить вид — только создатель ключа
     #[serde(default, skip_serializing_if = "Option::is_none", with = "nullable")]
     pub write_kinds: Option<Option<Vec<ApiKeyCreateWriteKindItem>>>,
@@ -120,7 +126,7 @@ pub struct ApiKeyCreate {
 
 impl ApiKeyCreate {
     /// Creates the model from its required fields; every optional field is unset.
-    pub fn new(name: impl Into<String>, permissions: Vec<String>) -> Self {
+    pub fn new(name: impl Into<String>) -> Self {
         Self {
             all_companies: None,
             allowed_ips: None,
@@ -128,7 +134,8 @@ impl ApiKeyCreate {
             expires_at: None,
             monthly_cap_tiyn: None,
             name: name.into(),
-            permissions,
+            no_companies: None,
+            permissions: None,
             write_kinds: None,
             write_max_amount_per_day_tiyn: None,
             write_max_amount_per_document_tiyn: None,
@@ -159,7 +166,7 @@ pub struct ApiKeyCreated {
     pub all_companies: bool,
     /// С каких IP и подсетей CIDR ключ работает; с другого адреса — 403 ip_not_allowed. null — с любых
     pub allowed_ips: Option<Vec<String>>,
-    /// Компании, к которым ключ даёт доступ (co_…); пусто у ключа на все компании (all_companies)
+    /// Компании, к которым ключ даёт доступ (co_…); пусто у ключа на все компании (all_companies) и у ключа без компаний (no_companies)
     pub company_ids: Vec<String>,
     /// Когда выпущен, ISO 8601 UTC
     pub created_at: String,
@@ -184,6 +191,8 @@ pub struct ApiKeyCreated {
     pub monthly_cap_tiyn: Option<i64>,
     /// Название ключа для людей
     pub name: String,
+    /// Ключ без доступа к компаниям и их 1С: company_ids пуст, all_companies = false; компаний не видит никогда. Пустой company_ids сам по себе вида не называет — смотреть на all_companies и no_companies
+    pub no_companies: bool,
     /// Права ключа: `company.read` — читать данные компаний (есть всегда); `chat.use` — работать с ИИ-бухгалтером; `proposals.create` — готовить документы для 1С; `proposals.approve` — одобрять запись в 1С; `automations.read` — видеть автоматизации; `automations.manage` — менять и запускать автоматизации; `webhooks.manage` — вебхуки всей организации
     pub permissions: Vec<ApiKeyCreatedPermissionItem>,
     /// Открытая часть ключа для показа — узнать ключ среди других; сам ключ (tg_…_секрет) целиком не хранится
@@ -225,6 +234,7 @@ impl std::fmt::Debug for ApiKeyCreated {
         out.field("last_used_ip", &self.last_used_ip);
         out.field("monthly_cap_tiyn", &self.monthly_cap_tiyn);
         out.field("name", &self.name);
+        out.field("no_companies", &self.no_companies);
         out.field("permissions", &self.permissions);
         out.field("prefix", &self.prefix);
         out.field(
@@ -279,7 +289,7 @@ pub struct ApiKeyDetails {
     pub allowed_ips: Option<Vec<String>>,
     /// Почему ключ сейчас не сработает — тот же код, что вернул бы отказ; null — всё хорошо. Вызов ИИ оценивается средней ценой, настоящая цена может быть выше. Ограничение по адресу (allowed_ips) здесь не проверяется: оно своё у каждого запроса. По самому ключу код входа (выключен, срок, отзыв) приходит ошибкой 401, а не этим полем.
     pub blocked_reason: Option<ApiKeyDetailsBlockedReason>,
-    /// Компании, к которым ключ даёт доступ (co_…); пусто у ключа на все компании (all_companies)
+    /// Компании, к которым ключ даёт доступ (co_…); пусто у ключа на все компании (all_companies) и у ключа без компаний (no_companies)
     pub company_ids: Vec<String>,
     /// Когда выпущен, ISO 8601 UTC
     pub created_at: String,
@@ -299,6 +309,8 @@ pub struct ApiKeyDetails {
     pub monthly_cap_tiyn: Option<i64>,
     /// Название ключа для людей
     pub name: String,
+    /// Ключ без доступа к компаниям и их 1С: company_ids пуст, all_companies = false; компаний не видит никогда. Пустой company_ids сам по себе вида не называет — смотреть на all_companies и no_companies
+    pub no_companies: bool,
     /// Права ключа: `company.read` — читать данные компаний (есть всегда); `chat.use` — работать с ИИ-бухгалтером; `proposals.create` — готовить документы для 1С; `proposals.approve` — одобрять запись в 1С; `automations.read` — видеть автоматизации; `automations.manage` — менять и запускать автоматизации; `webhooks.manage` — вебхуки всей организации
     pub permissions: Vec<ApiKeyDetailsPermissionItem>,
     /// Открытая часть ключа для показа — узнать ключ среди других; сам ключ (tg_…_секрет) целиком не хранится
@@ -390,6 +402,9 @@ pub struct ApiKeyPatch {
     /// Название ключа для людей (1–100 знаков): где он используется
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub name: Option<String>,
+    /// Ключ без доступа к компаниям и их 1С: ни одной компании он не видит — ни сейчас, ни будущих; company_ids и all_companies не передаются, права — только company.read (он ничего не открывает). true — ключ теряет доступ ко всем компаниям (права в компаниях нужно убрать тем же запросом); вернуть доступ — company_ids или all_companies: true; менять может только создатель ключа
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub no_companies: Option<bool>,
     /// Права ключа (1–20): `company.read` — читать данные компаний (добавляется всегда, даже если не передано); `chat.use` — работать с ИИ-бухгалтером; `proposals.create` — готовить документы для 1С; `proposals.approve` — одобрять запись документов в 1С; `automations.read` — видеть хуки, сценарии и журнал запусков; `automations.manage` — менять и запускать автоматизации; `webhooks.manage` — вебхуки всей организации (только у ключа на все её компании). Ни одно право не шире прав создателя. Заменяет список целиком; менять может только создатель ключа
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub permissions: Option<Vec<String>>,
@@ -473,7 +488,7 @@ pub struct ApiKeyRolled {
     pub all_companies: bool,
     /// С каких IP и подсетей CIDR ключ работает; с другого адреса — 403 ip_not_allowed. null — с любых
     pub allowed_ips: Option<Vec<String>>,
-    /// Компании, к которым ключ даёт доступ (co_…); пусто у ключа на все компании (all_companies)
+    /// Компании, к которым ключ даёт доступ (co_…); пусто у ключа на все компании (all_companies) и у ключа без компаний (no_companies)
     pub company_ids: Vec<String>,
     /// Когда выпущен, ISO 8601 UTC
     pub created_at: String,
@@ -485,8 +500,11 @@ pub struct ApiKeyRolled {
     pub expires_at: String,
     /// id ключа (key_…) — для адресов …/api-keys/{id}
     pub id: String,
-    /// Новый ключ целиком (tg_…) — один раз: показать с кнопкой «Скопировать»
-    pub key: String,
+    /// Новый ключ целиком (tg_…) — один раз: показать с кнопкой «Скопировать». В повторе по Idempotency-Key — null
+    pub key: Option<String>,
+    /// Только в повторе по Idempotency-Key: почему key = null и что делать, если новый секрет потерян (сменить ещё раз)
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub key_note: Option<String>,
     /// Когда ключом пользовались последний раз, ISO 8601 UTC (точность — около минуты); null — ещё ни разу
     pub last_used_at: Option<String>,
     /// С какого IP-адреса был последний запрос; null — ещё ни разу
@@ -495,6 +513,8 @@ pub struct ApiKeyRolled {
     pub monthly_cap_tiyn: Option<i64>,
     /// Название ключа для людей
     pub name: String,
+    /// Ключ без доступа к компаниям и их 1С: company_ids пуст, all_companies = false; компаний не видит никогда. Пустой company_ids сам по себе вида не называет — смотреть на all_companies и no_companies
+    pub no_companies: bool,
     /// Права ключа: `company.read` — читать данные компаний (есть всегда); `chat.use` — работать с ИИ-бухгалтером; `proposals.create` — готовить документы для 1С; `proposals.approve` — одобрять запись в 1С; `automations.read` — видеть автоматизации; `automations.manage` — менять и запускать автоматизации; `webhooks.manage` — вебхуки всей организации
     pub permissions: Vec<ApiKeyRolledPermissionItem>,
     /// Открытая часть ключа для показа — узнать ключ среди других; сам ключ (tg_…_секрет) целиком не хранится
@@ -529,11 +549,14 @@ impl std::fmt::Debug for ApiKeyRolled {
         out.field("disabled_at", &self.disabled_at);
         out.field("expires_at", &self.expires_at);
         out.field("id", &self.id);
-        out.field("key", &REDACTED);
+        let hidden = self.key.as_ref().map(|_| REDACTED);
+        out.field("key", &hidden);
+        out.field("key_note", &self.key_note);
         out.field("last_used_at", &self.last_used_at);
         out.field("last_used_ip", &self.last_used_ip);
         out.field("monthly_cap_tiyn", &self.monthly_cap_tiyn);
         out.field("name", &self.name);
+        out.field("no_companies", &self.no_companies);
         out.field("permissions", &self.permissions);
         out.field("prefix", &self.prefix);
         out.field(
@@ -589,7 +612,7 @@ pub struct ApiKeySelf {
     pub allowed_ips: Option<Vec<String>>,
     /// Почему ключ сейчас не сработает — тот же код, что вернул бы отказ; null — всё хорошо. Вызов ИИ оценивается средней ценой, настоящая цена может быть выше. Ограничение по адресу (allowed_ips) здесь не проверяется: оно своё у каждого запроса. По самому ключу код входа (выключен, срок, отзыв) приходит ошибкой 401, а не этим полем.
     pub blocked_reason: Option<ApiKeySelfBlockedReason>,
-    /// Компании, к которым ключ даёт доступ (co_…); пусто у ключа на все компании (all_companies)
+    /// Компании, к которым ключ даёт доступ (co_…); пусто у ключа на все компании (all_companies) и у ключа без компаний (no_companies)
     pub company_ids: Vec<String>,
     /// Когда выпущен, ISO 8601 UTC
     pub created_at: String,
@@ -610,6 +633,8 @@ pub struct ApiKeySelf {
     pub monthly_cap_tiyn: Option<i64>,
     /// Название ключа для людей
     pub name: String,
+    /// Ключ без доступа к компаниям и их 1С: company_ids пуст, all_companies = false; компаний не видит никогда. Пустой company_ids сам по себе вида не называет — смотреть на all_companies и no_companies
+    pub no_companies: bool,
     /// Права ключа: `company.read` — читать данные компаний (есть всегда); `chat.use` — работать с ИИ-бухгалтером; `proposals.create` — готовить документы для 1С; `proposals.approve` — одобрять запись в 1С; `automations.read` — видеть автоматизации; `automations.manage` — менять и запускать автоматизации; `webhooks.manage` — вебхуки всей организации
     pub permissions: Vec<ApiKeySelfPermissionItem>,
     /// Открытая часть ключа для показа — узнать ключ среди других; сам ключ (tg_…_секрет) целиком не хранится
@@ -738,7 +763,7 @@ pub struct ApiKeyUpdated {
     pub all_companies: bool,
     /// С каких IP и подсетей CIDR ключ работает; с другого адреса — 403 ip_not_allowed. null — с любых
     pub allowed_ips: Option<Vec<String>>,
-    /// Компании, к которым ключ даёт доступ (co_…); пусто у ключа на все компании (all_companies)
+    /// Компании, к которым ключ даёт доступ (co_…); пусто у ключа на все компании (all_companies) и у ключа без компаний (no_companies)
     pub company_ids: Vec<String>,
     /// Когда выпущен, ISO 8601 UTC
     pub created_at: String,
@@ -758,6 +783,8 @@ pub struct ApiKeyUpdated {
     pub monthly_cap_tiyn: Option<i64>,
     /// Название ключа для людей
     pub name: String,
+    /// Ключ без доступа к компаниям и их 1С: company_ids пуст, all_companies = false; компаний не видит никогда. Пустой company_ids сам по себе вида не называет — смотреть на all_companies и no_companies
+    pub no_companies: bool,
     /// Права ключа: `company.read` — читать данные компаний (есть всегда); `chat.use` — работать с ИИ-бухгалтером; `proposals.create` — готовить документы для 1С; `proposals.approve` — одобрять запись в 1С; `automations.read` — видеть автоматизации; `automations.manage` — менять и запускать автоматизации; `webhooks.manage` — вебхуки всей организации
     pub permissions: Vec<ApiKeyUpdatedPermissionItem>,
     /// Открытая часть ключа для показа — узнать ключ среди других; сам ключ (tg_…_секрет) целиком не хранится
@@ -850,7 +877,7 @@ pub struct ApiKeyUsageByDayItem {
 pub struct ApiKeyUsageByModelItem {
     /// Стоимость в тиынах (1 ₸ = 100 тиын; показывать значение / 100 ₸)
     pub cost_tiyn: i64,
-    /// Модель ИИ (техническое имя)
+    /// Модель ИИ: tungo-1-flash, tungo-1, tungo-1-deep (tungo-search, tungo-legacy)
     pub model: String,
     /// Сколько вызовов ИИ
     pub requests: i64,
@@ -1058,7 +1085,7 @@ pub struct ApproveRequest {
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[non_exhaustive]
 pub struct AuditEntry {
-    /// Что сделано — машинное имя вида «объект.действие»; подпись по-русски — в action_title. Значения:
+    /// Код действия вида «объект.действие». Текст для человека собирайте сами на его языке: по этому коду и параметрам из data (ниже — что значит каждый код). Значения:
     /// - `company.created` — Компания заведена
     /// - `company.updated` — Карточка компании изменена
     /// - `company.archived` — Компания убрана в архив
@@ -1075,12 +1102,14 @@ pub struct AuditEntry {
     /// - `company.onec_connector_code_created` — Выдан код привязки программы в офисе
     /// - `company.onec_connector_paired` — Программа в офисе привязана
     /// - `company.onec_connector_rotated` — Ключ программы в офисе заменён
+    /// - `company.onec_connector_rotate_refused` — Отказ в повторе смены ключа программы в офисе: прежний ключ без метки той смены
     /// - `company.onec_connector_revoked` — Программа в офисе отвязана
     /// - `company.onec_connector_link_approved` — Привязка программы в офисе одобрена в кабинете
     /// - `connector.link_created` — Программа в офисе запросила привязку через браузер
     /// - `connector.link_denied` — Привязка программы в офисе отклонена
     /// - `company.onec_link_approved` — Вход в Tungo из 1С подтверждён
     /// - `company.onec_link_revoked` — Вход в Tungo из 1С отозван
+    /// - `onec_link.wrong_match` — Вход в Tungo из 1С отменён: на сайте нажато не то число сверки
     /// - `company.profile_rebuild` — Справка о компании пересобрана
     /// - `workspace.member_joined` — Сотрудник вступил в организацию
     /// - `workspace.member_role_changed` — Роль сотрудника в организации изменена
@@ -1102,6 +1131,8 @@ pub struct AuditEntry {
     /// - `workspace.ownership_transferred` — Владение организацией передано
     /// - `workspace.deleted` — Организация удалена
     /// - `workspace.created` — Создана команда
+    /// - `team.checkout_abandoned` — Оформление Team не завершено: черновик команды убран
+    /// - `enterprise.request_created` — Отправлена заявка на Enterprise
     /// - `workspace.converted_to_team` — Личная организация стала командой
     /// - `workspace.deletion_scheduled` — Владелец запланировал удаление организации
     /// - `workspace.deletion_cancelled` — Удаление организации отменено
@@ -1147,6 +1178,7 @@ pub struct AuditEntry {
     /// - `billing.profile.updated` — Реквизиты для счетов изменены
     /// - `billing.payment_method.disabled` — Карта отключена
     /// - `billing.refund.succeeded` — Деньги возвращены
+    /// - `billing.manual_charge` — Админ платформы списал деньги с карты вручную
     /// - `subscription.created` — Подписка оформлена
     /// - `subscription.changed` — Тариф изменён
     /// - `subscription.cancel_scheduled` — Подписка отменена с конца периода
@@ -1172,13 +1204,49 @@ pub struct AuditEntry {
     /// - `account.deletion_scheduled` — Аккаунт помечен к удалению
     /// - `account.deletion_cancelled` — Удаление аккаунта отменено
     /// - `account.deleted` — Аккаунт удалён и обезличен
+    /// - `account.email_code_sent` — Запрошен код подтверждения почты (аккаунт Telegram)
+    /// - `account.email_bound` — Почта привязана к аккаунту Telegram
+    /// - `account.telegram_merged` — Telegram привязан к аккаунту с подтверждённой почтой, аккаунт Telegram закрыт
+    /// - `account.google_linked` — Вход через Google привязал Google к аккаунту с той же почтой (sessions_closed — почта не была подтверждена: прежние сессии закрыты)
+    /// - `account.telegram_merge_refused` — Склейка аккаунта Telegram с аккаунтом почты отклонена (данные, другой Telegram или почта закрыта)
+    /// - `admin.ads.conversions_released` — Удержанные рекламные конверсии отправлены вручную
+    /// - `admin.ads.conversions_rejected` — Рекламные конверсии отклонены
+    /// - `admin.ads.signups_exported` — Выгрузка рекламных регистраций с IP и User-Agent (CSV)
+    /// - `admin.access.signed_in` — Вход в админку по пропуску Cloudflare Access
+    /// - `admin.access.refused` — Вход в админку по пропуску Cloudflare Access отклонён
+    /// - `admin.two_factor.verified` — Администратор платформы подтвердил вход вторым фактором
+    /// - `admin.two_factor.enable_requested` — Сотрудник платформы начал включать второй фактор (с кодом из почты)
+    /// - `admin.two_factor.enabled` — Сотрудник платформы включил второй фактор
+    /// - `admin.two_factor.disabled` — Сотрудник платформы отключил второй фактор (с кодом из почты)
+    /// - `admin.session.signed_in` — Вход в админку по сессии со вторым фактором
+    /// - `admin.user.banned` — Вход пользователю закрыт платформой
+    /// - `admin.user.unbanned` — Вход пользователю открыт платформой
     /// - `admin.workspace.blocked` — Организация заблокирована платформой
     /// - `admin.workspace.unblocked` — Организация разблокирована платформой
     /// - `admin.workspace.training_consent` — Согласие на обучение изменено (платформа)
     /// - `admin.user.platform_roles_changed` — Роли платформы изменены
     /// - `admin.user.free_eligibility_changed` — Бесплатный лимит пользователя выдан или снят вручную (платформа)
+    /// - `admin.user.limit_resets_granted` — Человеку выданы сбросы лимита (платформа)
+    /// - `admin.user.limit_resets_revoked` — Выданные сбросы лимита отозваны (платформа)
+    /// - `usage.limit_reset_applied` — Применён сброс лимита
+    /// - `referral.claimed` — Регистрация по приглашению друга
+    /// - `referral.rewarded` — За приглашённого друга выдан сброс лимита
+    /// - `admin.enterprise_request.status_changed` — Статус заявки Enterprise изменён (платформа)
     /// - `admin.training.exported` — Выгрузка для обучения (платформа)
+    /// - `admin.setting.changed` — Настройка платформы изменена
+    /// - `admin.logs.purged` — Журнал запросов и итогов ходов ИИ убран вручную (платформа)
     /// - `admin.dialog.pd_viewed` — Поддержка открыла разговор с персональными данными
+    /// - `admin.dialog.label_set` — Оценка ответа для обучения поставлена или заменена (платформа)
+    /// - `admin.dialog.label_removed` — Оценка ответа для обучения удалена (платформа)
+    /// - `admin.journal.pd_viewed` — Поддержка открыла журнал ИИ-бухгалтера с персональными данными
+    /// - `admin.company.pd_viewed` — Поддержка открыла карточку компании-ИП с ИИН
+    /// - `admin.company.pd_searched` — Поддержка нашла компанию-ИП поиском по ИИН
+    /// - `admin.payment.pd_viewed` — Поддержка открыла платёж с реквизитами плательщика и обменом с банком
+    /// - `site.post_published` — Статья блога опубликована на сайте (платформа)
+    /// - `site.post_unpublished` — Статья блога снята с сайта (платформа)
+    /// - `site.post_deleted` — Черновик статьи блога удалён (платформа)
+    /// - `site.legal_published` — Опубликована новая редакция документа сайта (платформа)
+    /// - `site.trackers_saved` — Изменены счётчики и коды подтверждения сайта (платформа)
     /// - `canary.triggered` — Сработала приманка: украденный ключ или почта «сотрудника» (платформа)
     /// - `billing.payment.new` — Платёж: создан
     /// - `billing.payment.pending` — Платёж: отправлен в банк
@@ -1191,7 +1259,9 @@ pub struct AuditEntry {
     /// - `billing.payment.partially_refunded` — Платёж: возвращён частично
     /// - `billing.payment.refunded` — Платёж: возвращён
     pub action: AuditEntryAction,
-    /// Что сделано, по-русски — для показа
+    /// Что сделано, готовой фразой по-русски. Оставлено для совместимости: фраза всегда русская, поэтому для показа берите код action и параметры data и подставляйте текст на языке человека
+    ///
+    /// Deprecated.
     pub action_title: String,
     /// Кто сделал
     pub actor: AuditEntryActor,
@@ -1199,13 +1269,15 @@ pub struct AuditEntry {
     pub at: Option<String>,
     /// Компания, к которой относится запись (co_…); null — запись об организации в целом
     pub company_id: Option<String>,
-    /// Подробности действия (JSON, ключи snake_case): например { before, after } у изменений. Вид зависит от action — показывать как дополнительные сведения
+    /// Параметры действия (JSON, ключи snake_case) — для подстановки в текст и для подробностей: например { role } у смены роли, { from, amount_tiyn, kind } у платежа, { before, after } у изменений. Набор зависит от action
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub data: Option<Value>,
     /// id записи (aud_…)
     pub id: String,
     /// IP, с которого пришёл запрос; null — фоновое действие
     pub ip: Option<String>,
+    /// Над чем сделано — с названием, чтобы не показывать безликое «Организация»: в отличие от target, у действий с вебхуком это сам адрес вебхука, у платежа есть сумма и назначение. null — без отдельного объекта. По ключу API названия, суммы и назначения нет (null): они только по сессии
+    pub object: Option<AuditEntryObject>,
     /// Номер запроса (req_…) — по нему поддержка найдёт запрос; null — фоновое действие
     pub request_id: Option<String>,
     /// Над чем сделано; null — без отдельного объекта
@@ -1213,7 +1285,7 @@ pub struct AuditEntry {
 }
 
 string_enum! {
-    /// Что сделано — машинное имя вида «объект.действие»; подпись по-русски — в action_title. Значения:
+    /// Код действия вида «объект.действие». Текст для человека собирайте сами на его языке: по этому коду и параметрам из data (ниже — что значит каждый код). Значения:
     /// - `company.created` — Компания заведена
     /// - `company.updated` — Карточка компании изменена
     /// - `company.archived` — Компания убрана в архив
@@ -1230,12 +1302,14 @@ string_enum! {
     /// - `company.onec_connector_code_created` — Выдан код привязки программы в офисе
     /// - `company.onec_connector_paired` — Программа в офисе привязана
     /// - `company.onec_connector_rotated` — Ключ программы в офисе заменён
+    /// - `company.onec_connector_rotate_refused` — Отказ в повторе смены ключа программы в офисе: прежний ключ без метки той смены
     /// - `company.onec_connector_revoked` — Программа в офисе отвязана
     /// - `company.onec_connector_link_approved` — Привязка программы в офисе одобрена в кабинете
     /// - `connector.link_created` — Программа в офисе запросила привязку через браузер
     /// - `connector.link_denied` — Привязка программы в офисе отклонена
     /// - `company.onec_link_approved` — Вход в Tungo из 1С подтверждён
     /// - `company.onec_link_revoked` — Вход в Tungo из 1С отозван
+    /// - `onec_link.wrong_match` — Вход в Tungo из 1С отменён: на сайте нажато не то число сверки
     /// - `company.profile_rebuild` — Справка о компании пересобрана
     /// - `workspace.member_joined` — Сотрудник вступил в организацию
     /// - `workspace.member_role_changed` — Роль сотрудника в организации изменена
@@ -1257,6 +1331,8 @@ string_enum! {
     /// - `workspace.ownership_transferred` — Владение организацией передано
     /// - `workspace.deleted` — Организация удалена
     /// - `workspace.created` — Создана команда
+    /// - `team.checkout_abandoned` — Оформление Team не завершено: черновик команды убран
+    /// - `enterprise.request_created` — Отправлена заявка на Enterprise
     /// - `workspace.converted_to_team` — Личная организация стала командой
     /// - `workspace.deletion_scheduled` — Владелец запланировал удаление организации
     /// - `workspace.deletion_cancelled` — Удаление организации отменено
@@ -1302,6 +1378,7 @@ string_enum! {
     /// - `billing.profile.updated` — Реквизиты для счетов изменены
     /// - `billing.payment_method.disabled` — Карта отключена
     /// - `billing.refund.succeeded` — Деньги возвращены
+    /// - `billing.manual_charge` — Админ платформы списал деньги с карты вручную
     /// - `subscription.created` — Подписка оформлена
     /// - `subscription.changed` — Тариф изменён
     /// - `subscription.cancel_scheduled` — Подписка отменена с конца периода
@@ -1327,13 +1404,49 @@ string_enum! {
     /// - `account.deletion_scheduled` — Аккаунт помечен к удалению
     /// - `account.deletion_cancelled` — Удаление аккаунта отменено
     /// - `account.deleted` — Аккаунт удалён и обезличен
+    /// - `account.email_code_sent` — Запрошен код подтверждения почты (аккаунт Telegram)
+    /// - `account.email_bound` — Почта привязана к аккаунту Telegram
+    /// - `account.telegram_merged` — Telegram привязан к аккаунту с подтверждённой почтой, аккаунт Telegram закрыт
+    /// - `account.google_linked` — Вход через Google привязал Google к аккаунту с той же почтой (sessions_closed — почта не была подтверждена: прежние сессии закрыты)
+    /// - `account.telegram_merge_refused` — Склейка аккаунта Telegram с аккаунтом почты отклонена (данные, другой Telegram или почта закрыта)
+    /// - `admin.ads.conversions_released` — Удержанные рекламные конверсии отправлены вручную
+    /// - `admin.ads.conversions_rejected` — Рекламные конверсии отклонены
+    /// - `admin.ads.signups_exported` — Выгрузка рекламных регистраций с IP и User-Agent (CSV)
+    /// - `admin.access.signed_in` — Вход в админку по пропуску Cloudflare Access
+    /// - `admin.access.refused` — Вход в админку по пропуску Cloudflare Access отклонён
+    /// - `admin.two_factor.verified` — Администратор платформы подтвердил вход вторым фактором
+    /// - `admin.two_factor.enable_requested` — Сотрудник платформы начал включать второй фактор (с кодом из почты)
+    /// - `admin.two_factor.enabled` — Сотрудник платформы включил второй фактор
+    /// - `admin.two_factor.disabled` — Сотрудник платформы отключил второй фактор (с кодом из почты)
+    /// - `admin.session.signed_in` — Вход в админку по сессии со вторым фактором
+    /// - `admin.user.banned` — Вход пользователю закрыт платформой
+    /// - `admin.user.unbanned` — Вход пользователю открыт платформой
     /// - `admin.workspace.blocked` — Организация заблокирована платформой
     /// - `admin.workspace.unblocked` — Организация разблокирована платформой
     /// - `admin.workspace.training_consent` — Согласие на обучение изменено (платформа)
     /// - `admin.user.platform_roles_changed` — Роли платформы изменены
     /// - `admin.user.free_eligibility_changed` — Бесплатный лимит пользователя выдан или снят вручную (платформа)
+    /// - `admin.user.limit_resets_granted` — Человеку выданы сбросы лимита (платформа)
+    /// - `admin.user.limit_resets_revoked` — Выданные сбросы лимита отозваны (платформа)
+    /// - `usage.limit_reset_applied` — Применён сброс лимита
+    /// - `referral.claimed` — Регистрация по приглашению друга
+    /// - `referral.rewarded` — За приглашённого друга выдан сброс лимита
+    /// - `admin.enterprise_request.status_changed` — Статус заявки Enterprise изменён (платформа)
     /// - `admin.training.exported` — Выгрузка для обучения (платформа)
+    /// - `admin.setting.changed` — Настройка платформы изменена
+    /// - `admin.logs.purged` — Журнал запросов и итогов ходов ИИ убран вручную (платформа)
     /// - `admin.dialog.pd_viewed` — Поддержка открыла разговор с персональными данными
+    /// - `admin.dialog.label_set` — Оценка ответа для обучения поставлена или заменена (платформа)
+    /// - `admin.dialog.label_removed` — Оценка ответа для обучения удалена (платформа)
+    /// - `admin.journal.pd_viewed` — Поддержка открыла журнал ИИ-бухгалтера с персональными данными
+    /// - `admin.company.pd_viewed` — Поддержка открыла карточку компании-ИП с ИИН
+    /// - `admin.company.pd_searched` — Поддержка нашла компанию-ИП поиском по ИИН
+    /// - `admin.payment.pd_viewed` — Поддержка открыла платёж с реквизитами плательщика и обменом с банком
+    /// - `site.post_published` — Статья блога опубликована на сайте (платформа)
+    /// - `site.post_unpublished` — Статья блога снята с сайта (платформа)
+    /// - `site.post_deleted` — Черновик статьи блога удалён (платформа)
+    /// - `site.legal_published` — Опубликована новая редакция документа сайта (платформа)
+    /// - `site.trackers_saved` — Изменены счётчики и коды подтверждения сайта (платформа)
     /// - `canary.triggered` — Сработала приманка: украденный ключ или почта «сотрудника» (платформа)
     /// - `billing.payment.new` — Платёж: создан
     /// - `billing.payment.pending` — Платёж: отправлен в банк
@@ -1362,12 +1475,14 @@ string_enum! {
         CompanyOnecConnectorCodeCreated = "company.onec_connector_code_created",
         CompanyOnecConnectorPaired = "company.onec_connector_paired",
         CompanyOnecConnectorRotated = "company.onec_connector_rotated",
+        CompanyOnecConnectorRotateRefused = "company.onec_connector_rotate_refused",
         CompanyOnecConnectorRevoked = "company.onec_connector_revoked",
         CompanyOnecConnectorLinkApproved = "company.onec_connector_link_approved",
         ConnectorLinkCreated = "connector.link_created",
         ConnectorLinkDenied = "connector.link_denied",
         CompanyOnecLinkApproved = "company.onec_link_approved",
         CompanyOnecLinkRevoked = "company.onec_link_revoked",
+        OnecLinkWrongMatch = "onec_link.wrong_match",
         CompanyProfileRebuild = "company.profile_rebuild",
         WorkspaceMemberJoined = "workspace.member_joined",
         WorkspaceMemberRoleChanged = "workspace.member_role_changed",
@@ -1389,6 +1504,8 @@ string_enum! {
         WorkspaceOwnershipTransferred = "workspace.ownership_transferred",
         WorkspaceDeleted = "workspace.deleted",
         WorkspaceCreated = "workspace.created",
+        TeamCheckoutAbandoned = "team.checkout_abandoned",
+        EnterpriseRequestCreated = "enterprise.request_created",
         WorkspaceConvertedToTeam = "workspace.converted_to_team",
         WorkspaceDeletionScheduled = "workspace.deletion_scheduled",
         WorkspaceDeletionCancelled = "workspace.deletion_cancelled",
@@ -1434,6 +1551,7 @@ string_enum! {
         BillingProfileUpdated = "billing.profile.updated",
         BillingPaymentMethodDisabled = "billing.payment_method.disabled",
         BillingRefundSucceeded = "billing.refund.succeeded",
+        BillingManualCharge = "billing.manual_charge",
         SubscriptionCreated = "subscription.created",
         SubscriptionChanged = "subscription.changed",
         SubscriptionCancelScheduled = "subscription.cancel_scheduled",
@@ -1459,13 +1577,49 @@ string_enum! {
         AccountDeletionScheduled = "account.deletion_scheduled",
         AccountDeletionCancelled = "account.deletion_cancelled",
         AccountDeleted = "account.deleted",
+        AccountEmailCodeSent = "account.email_code_sent",
+        AccountEmailBound = "account.email_bound",
+        AccountTelegramMerged = "account.telegram_merged",
+        AccountGoogleLinked = "account.google_linked",
+        AccountTelegramMergeRefused = "account.telegram_merge_refused",
+        AdminAdsConversionsReleased = "admin.ads.conversions_released",
+        AdminAdsConversionsRejected = "admin.ads.conversions_rejected",
+        AdminAdsSignupsExported = "admin.ads.signups_exported",
+        AdminAccessSignedIn = "admin.access.signed_in",
+        AdminAccessRefused = "admin.access.refused",
+        AdminTwoFactorVerified = "admin.two_factor.verified",
+        AdminTwoFactorEnableRequested = "admin.two_factor.enable_requested",
+        AdminTwoFactorEnabled = "admin.two_factor.enabled",
+        AdminTwoFactorDisabled = "admin.two_factor.disabled",
+        AdminSessionSignedIn = "admin.session.signed_in",
+        AdminUserBanned = "admin.user.banned",
+        AdminUserUnbanned = "admin.user.unbanned",
         AdminWorkspaceBlocked = "admin.workspace.blocked",
         AdminWorkspaceUnblocked = "admin.workspace.unblocked",
         AdminWorkspaceTrainingConsent = "admin.workspace.training_consent",
         AdminUserPlatformRolesChanged = "admin.user.platform_roles_changed",
         AdminUserFreeEligibilityChanged = "admin.user.free_eligibility_changed",
+        AdminUserLimitResetsGranted = "admin.user.limit_resets_granted",
+        AdminUserLimitResetsRevoked = "admin.user.limit_resets_revoked",
+        UsageLimitResetApplied = "usage.limit_reset_applied",
+        ReferralClaimed = "referral.claimed",
+        ReferralRewarded = "referral.rewarded",
+        AdminEnterpriseRequestStatusChanged = "admin.enterprise_request.status_changed",
         AdminTrainingExported = "admin.training.exported",
+        AdminSettingChanged = "admin.setting.changed",
+        AdminLogsPurged = "admin.logs.purged",
         AdminDialogPdViewed = "admin.dialog.pd_viewed",
+        AdminDialogLabelSet = "admin.dialog.label_set",
+        AdminDialogLabelRemoved = "admin.dialog.label_removed",
+        AdminJournalPdViewed = "admin.journal.pd_viewed",
+        AdminCompanyPdViewed = "admin.company.pd_viewed",
+        AdminCompanyPdSearched = "admin.company.pd_searched",
+        AdminPaymentPdViewed = "admin.payment.pd_viewed",
+        SitePostPublished = "site.post_published",
+        SitePostUnpublished = "site.post_unpublished",
+        SitePostDeleted = "site.post_deleted",
+        SiteLegalPublished = "site.legal_published",
+        SiteTrackersSaved = "site.trackers_saved",
         CanaryTriggered = "canary.triggered",
         BillingPaymentNew = "billing.payment.new",
         BillingPaymentPending = "billing.payment.pending",
@@ -1499,6 +1653,37 @@ string_enum! {
         User = "user",
         ApiKey = "api_key",
         System = "system",
+    }
+}
+
+/// Над чем сделано — с названием, чтобы не показывать безликое «Организация»: в отличие от target, у действий с вебхуком это сам адрес вебхука, у платежа есть сумма и назначение. null — без отдельного объекта. По ключу API названия, суммы и назначения нет (null): они только по сессии
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+#[non_exhaustive]
+pub struct AuditEntryObject {
+    /// Только у платежа: сумма в тиынах; у остальных — null
+    pub amount_tiyn: Option<i64>,
+    /// id объекта: публичный с меткой (pay_…, key_…, co_…), если у вида она есть; у вебхука — id адреса (ep_…)
+    pub id: Option<String>,
+    /// Название для показа: у вебхука — описание, а без него адрес; у ключа, компании, группы и своей роли — название; у человека — имя. null — названия нет (платёж показывайте суммой и назначением, организацию — своим словом) или объект удалён
+    pub name: Option<String>,
+    /// Только у платежа: назначение — subscription (подписка), seats (места), extra_usage (доп. использование), platform_topup (пополнение платформы), onboarding (подключение компании), card_verification (проверка карты), one_off и manual (разовый и ручной); у остальных — null
+    pub purpose: Option<AuditEntryObjectPurpose>,
+    /// Вид объекта: webhook — адрес вебхука, payment — платёж, api_key, company, user, group, custom_role, invitation, workspace и другие виды из target.type
+    #[serde(rename = "type")]
+    pub type_: String,
+}
+
+string_enum! {
+    /// Только у платежа: назначение — subscription (подписка), seats (места), extra_usage (доп. использование), platform_topup (пополнение платформы), onboarding (подключение компании), card_verification (проверка карты), one_off и manual (разовый и ручной); у остальных — null
+    AuditEntryObjectPurpose {
+        Subscription = "subscription",
+        OneOff = "one_off",
+        Onboarding = "onboarding",
+        ExtraUsage = "extra_usage",
+        PlatformTopup = "platform_topup",
+        Seats = "seats",
+        Manual = "manual",
+        CardVerification = "card_verification",
     }
 }
 
@@ -3751,6 +3936,42 @@ pub struct BatchRowQuestionOptionItem {
     pub label: String,
 }
 
+/// Данные файла выписки, по которому шло задание: счёт, банк, период, остатки. Полный номер счёта ядро не хранит
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+#[non_exhaustive]
+pub struct BatchStatement {
+    /// Счета выписки (обычно один)
+    pub accounts: Vec<BatchStatementAccount>,
+    /// Остаток сходится по всем счетам файла; false — хотя бы по одному не сходится; null — хотя бы по одному проверить нельзя
+    pub balanced: Option<bool>,
+    /// Начало периода выписки (ГГГГ-ММ-ДД); null — в файле нет
+    pub period_from: Option<String>,
+    /// Конец периода выписки (ГГГГ-ММ-ДД); null — в файле нет
+    pub period_to: Option<String>,
+    /// «Отправитель» из заголовка файла — банк или программа, сформировавшие выписку; null — не указан
+    pub sender: Option<String>,
+}
+
+/// Счёт выписки: остатки и обороты
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+#[non_exhaustive]
+pub struct BatchStatementAccount {
+    /// Номер счёта со скрытой серединой: первые 4 и последние 4 знака
+    pub account: String,
+    /// Остаток сходится: входящий остаток + поступило − списано = исходящий остаток (до тиына). null — проверить нельзя: в файле нет остатков или есть операции не по счетам выписки
+    pub balanced: Option<bool>,
+    /// Банк счёта — из реквизитов операций файла; null — банк в файле не назван (тогда показать sender выписки)
+    pub bank: Option<String>,
+    /// БИК банка счёта; null — в файле его нет
+    pub bank_bic: Option<String>,
+    /// Исходящий остаток на конец периода; null — в файле его нет
+    pub closing_balance: Option<Money>,
+    pub incoming: Money,
+    /// Входящий остаток на начало периода; null — в файле его нет
+    pub opening_balance: Option<Money>,
+    pub outgoing: Money,
+}
+
 /// Итог «Остановить»
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[non_exhaustive]
@@ -3785,6 +4006,8 @@ pub struct BatchSummary {
     pub reason: Option<String>,
     /// true — задание ещё идёт: кнопка «Одобрить» выключена
     pub running: bool,
+    /// Данные файла выписки (счёт, банк, период, остатки); null — задание не по файлу выписки (ЭСФ, DirectBank, одобрение) или заведено до появления поля
+    pub statement: Option<BatchStatement>,
     /// Название задания
     pub title: String,
     pub totals: BatchSummaryTotals,
@@ -3911,6 +4134,8 @@ pub struct CardSession {
     pub payment_object: BTreeMap<String, Value>,
     /// Адрес скрипта платёжной формы ePay: подключить его на странице (тег script) перед открытием формы
     pub script_url: String,
+    /// true — тестовый терминал ePay: настоящие деньги не списываются, платят тестовыми картами. Показать на форме пометку «тестовая оплата»
+    pub test_mode: bool,
 }
 
 impl CardSession {
@@ -3919,12 +4144,58 @@ impl CardSession {
         payment_id: impl Into<String>,
         payment_object: BTreeMap<String, Value>,
         script_url: impl Into<String>,
+        test_mode: bool,
     ) -> Self {
         Self {
             payment_id: payment_id.into(),
             payment_object,
             script_url: script_url.into(),
+            test_mode,
         }
+    }
+}
+
+/// Итог привязки карты после возврата с формы банка.
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+pub struct CardSessionState {
+    /// Почему карта не привязалась (только при status = failed, иначе null): card_taken — эта карта уже привязана другим человеком, предложить другую; abandoned — форму банка не открыли или закрыли, банк о заказе не узнал; declined — банк отказал или иной сбой. Текст подставляет кабинет
+    pub failure_code: Option<CardSessionStateFailureCode>,
+    /// Служебный платёж проверки карты — тот же, что в ответе POST …/card-sessions (pay_…)
+    pub payment_id: String,
+    /// Итог привязки: pending — ждём ответа банка (спросить ещё раз позже); verified — карта привязана и уже в списке карт; failed — не привязана, причина в failure_code
+    pub status: CardSessionStateStatus,
+}
+
+impl CardSessionState {
+    /// Creates the model from its required fields; every optional field is unset.
+    pub fn new(
+        failure_code: Option<CardSessionStateFailureCode>,
+        payment_id: impl Into<String>,
+        status: CardSessionStateStatus,
+    ) -> Self {
+        Self {
+            failure_code,
+            payment_id: payment_id.into(),
+            status,
+        }
+    }
+}
+
+string_enum! {
+    /// Почему карта не привязалась (только при status = failed, иначе null): card_taken — эта карта уже привязана другим человеком, предложить другую; abandoned — форму банка не открыли или закрыли, банк о заказе не узнал; declined — банк отказал или иной сбой. Текст подставляет кабинет
+    CardSessionStateFailureCode {
+        CardTaken = "card_taken",
+        Abandoned = "abandoned",
+        Declined = "declined",
+    }
+}
+
+string_enum! {
+    /// Итог привязки: pending — ждём ответа банка (спросить ещё раз позже); verified — карта привязана и уже в списке карт; failed — не привязана, причина в failure_code
+    CardSessionStateStatus {
+        Pending = "pending",
+        Verified = "verified",
+        Failed = "failed",
     }
 }
 
@@ -3961,8 +4232,12 @@ pub struct ChatAssistantMessage {
     pub blocks: Vec<ChatHistoryBlock>,
     /// Источники ответа
     pub citations: Vec<ChatCitation>,
+    /// Вопросы-продолжения под ответом, до 3, на языке разговора: нажатие — обычный новый вопрос с этим текстом. Пусто — предложить нечего
+    pub followups: Vec<String>,
     /// Устойчивый id сообщения: \<dialog_id\>:\<номер хода\>:a
     pub id: String,
+    /// Предложенное следующее действие; null — нет
+    pub next_action: Option<ChatNextAction>,
     /// Номера предложений этого хода — то же, что proposal-блоки, списком
     pub proposal_ids: Vec<String>,
     /// Ответ ИИ
@@ -3979,7 +4254,9 @@ impl Default for ChatAssistantMessage {
             at: Default::default(),
             blocks: Default::default(),
             citations: Default::default(),
+            followups: Default::default(),
             id: Default::default(),
+            next_action: Default::default(),
             proposal_ids: Default::default(),
             role: "assistant".to_owned(),
             state: Default::default(),
@@ -4035,12 +4312,15 @@ pub struct ChatAttachmentMeta {
 /// Ответ на один вопрос из события choice
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct ChatChoiceAnswer {
-    /// Свой ответ текстом (вариант «свой ответ»). Нужен selected или other — хотя бы одно
+    /// Свой ответ текстом (вариант «свой ответ»). Нужен selected или other — хотя бы одно (или skipped)
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub other: Option<String>,
     /// Выбранные варианты — их label из options, в любом порядке; без повторов. В вопросе без multi_select — не больше одного
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub selected: Option<Vec<String>>,
+    /// true — «Пропустить»: вопрос оставлен без ответа, selected и other не передавать. ИИ узнаёт, что вопрос пропущен, и продолжает без этого ответа. У вопроса-подтверждения действия пропуск равен отказу: действие не выполняется
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub skipped: Option<bool>,
 }
 
 /// Вариант ответа
@@ -4057,10 +4337,12 @@ pub struct ChatChoiceOption {
     pub ref_: Option<String>,
 }
 
-/// Уточняющий вопрос ИИ с вариантами. Вариант «свой ответ» есть всегда и в options не входит
+/// Вопрос с вариантами: уточняющий вопрос ИИ или подтверждение действия (confirm). Вариант «свой ответ» есть всегда и в options не входит
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[non_exhaustive]
 pub struct ChatChoiceQuestion {
+    /// true — это не уточнение, а подтверждение действия: вопрос задала программа, действие выполнится только по кнопке согласия (первый вариант). Пропуск, свой текст и закрытие — отказ: кнопку «Пропустить» не показывать. false — обычный уточняющий вопрос ИИ
+    pub confirm: bool,
     /// Короткая подпись вопроса, до ~12 символов (для вкладки или чипа)
     pub header: String,
     /// true — можно выбрать несколько вариантов (чекбоксы); false — один (радиокнопки)
@@ -4110,8 +4392,9 @@ pub struct ChatDialog {
     pub pd_restored: bool,
     /// true — идёт ход: дочитать его потоком GET …/chat/{id}/events?turn=\<turn\>
     pub running: bool,
-    /// Заголовок — первый вопрос одной строкой
+    /// Название одной строкой: человека, иначе от ИИ, иначе первый вопрос. Откуда оно — title_source
     pub title: String,
+    pub title_source: ChatTitleSource,
     /// Номер текущего хода (если идёт) или число законченных ходов
     pub turn: f64,
     /// Последнее изменение, ISO 8601 UTC
@@ -4169,7 +4452,7 @@ pub struct ChatDialogList {
 /// Новое название разговора
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct ChatDialogPatch {
-    /// Новое название, до 64 символов; пустая строка — вернуть заголовок по первому вопросу
+    /// Новое название, до 64 символов; пустая строка — вернуть автоматическое название (от ИИ, а пока его нет — первый вопрос)
     pub title: String,
 }
 
@@ -4190,6 +4473,7 @@ pub struct ChatDialogRenamed {
     pub id: String,
     /// Название разговора теперь
     pub title: String,
+    pub title_source: ChatTitleSource,
 }
 
 /// Разговор в списке
@@ -4202,8 +4486,9 @@ pub struct ChatDialogSummary {
     pub message_count: f64,
     /// true — ИИ сейчас отвечает: показать индикатор
     pub running: bool,
-    /// Заголовок — первый вопрос одной строкой (до 64 знаков, длиннее — с «…»); вопрос из одних файлов — их имена
+    /// Название одной строкой (до 64 знаков, длиннее — с «…»): человека, иначе от ИИ, иначе первый вопрос (вопрос из одних файлов — их имена). Откуда оно — title_source
     pub title: String,
+    pub title_source: ChatTitleSource,
     /// Последнее изменение (у идущего хода — его начало), ISO 8601 UTC
     pub updated_at: String,
 }
@@ -4223,7 +4508,9 @@ tagged_union! {
         Error(ChatEventError) = "error",
         Batch(ChatEventBatch) = "batch",
         BatchReport(ChatEventBatchReport) = "batch_report",
+        Next(ChatEventNext) = "next",
         Done(ChatEventDone) = "done",
+        Title(ChatEventTitle) = "title",
     }
 }
 
@@ -4361,7 +4648,7 @@ impl Default for ChatEventCitation {
     }
 }
 
-/// Конец хода — приходит после записи хода в историю. Дальше событий не будет
+/// Конец хода — приходит после записи хода в историю. Дальше событий хода не будет; в первом ходе разговора за ним может прийти одно title
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[non_exhaustive]
 pub struct ChatEventDone {
@@ -4415,6 +4702,29 @@ impl Default for ChatEventError {
             error: Default::default(),
             request_id: Default::default(),
             type_: "error".to_owned(),
+        }
+    }
+}
+
+/// Что дальше — под законченным ответом, перед done, не чаще раза за ход: вопросы-продолжения и предложенное действие. Нажатие — обычный новый вопрос; сам ИИ ничего не запускает
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[non_exhaustive]
+pub struct ChatEventNext {
+    /// Предложенное следующее действие; null — нет
+    pub action: Option<ChatNextAction>,
+    /// Вопросы-продолжения под ответом, до 3, на языке разговора: нажатие — обычный новый вопрос с этим текстом. Пусто — предложить нечего
+    pub followups: Vec<String>,
+    /// Вид события: next
+    #[serde(rename = "type")]
+    pub type_: String,
+}
+
+impl Default for ChatEventNext {
+    fn default() -> Self {
+        Self {
+            action: Default::default(),
+            followups: Default::default(),
+            type_: "next".to_owned(),
         }
     }
 }
@@ -4571,6 +4881,26 @@ impl Default for ChatEventThinking {
     }
 }
 
+/// ИИ придумал название разговора — заменить им название в списке разговоров и в шапке (title_source станет ai). Раз за разговор, только кабинету (не ключу API), в потоке первого ответа ПОСЛЕ done: ход уже закончен и новый вопрос можно слать, поток закроется сразу за этим событием. Может не прийти (ИИ не успел, название задал человек, выключено) — название остаётся прежним; то же название отдают GET …/chat и GET …/chat/{id}
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[non_exhaustive]
+pub struct ChatEventTitle {
+    /// Название разговора, до 64 знаков
+    pub title: String,
+    /// Вид события: title
+    #[serde(rename = "type")]
+    pub type_: String,
+}
+
+impl Default for ChatEventTitle {
+    fn default() -> Self {
+        Self {
+            title: Default::default(),
+            type_: "title".to_owned(),
+        }
+    }
+}
+
 /// Шаг ИИ: вызов инструмента (поиск в 1С, расчёт) начат, закончен или с ошибкой
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[non_exhaustive]
@@ -4611,12 +4941,32 @@ string_enum! {
     }
 }
 
+/// Пачка, собранная ходом (разбор выписки, входящие ЭСФ), — то же, что событие batch_report в потоке: карточку результата взять свежей — GET …/batch/{job_id}/summary
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[non_exhaustive]
+pub struct ChatHistoryBatch {
+    /// id задания пачки (bat_…)
+    pub job_id: String,
+    /// Пачка документов
+    pub kind: String,
+}
+
+impl Default for ChatHistoryBatch {
+    fn default() -> Self {
+        Self {
+            job_id: Default::default(),
+            kind: "batch".to_owned(),
+        }
+    }
+}
+
 tagged_union! {
-    /// Блок ответа в истории — те же виды, что клиент собирает из живого потока: text | tool | proposal | question | error
+    /// Блок ответа в истории — те же виды, что клиент собирает из живого потока: text | tool | proposal | batch | question | error
     ChatHistoryBlock, tag = "kind" {
         Text(ChatHistoryText) = "text",
         Tool(ChatHistoryTool) = "tool",
         Proposal(ChatHistoryProposal) = "proposal",
+        Batch(ChatHistoryBatch) = "batch",
         Question(ChatHistoryQuestion) = "question",
         Error(ChatHistoryError) = "error",
     }
@@ -4628,6 +4978,7 @@ tagged_union! {
 pub struct ChatHistoryError {
     /// Причина:
     /// - `budget` — кончился лимит (дня или разговора)
+    /// - `parallel_turns_limit` — у человека уже идёт предельное число ходов ИИ (тариф без доп. использования) — дождаться ответа на предыдущие вопросы
     /// - `rate_limited` — сервис модели перегружен — повторите
     /// - `api` — сбой сервиса модели
     /// - `refusal` — модель отказалась отвечать
@@ -4663,6 +5014,7 @@ impl Default for ChatHistoryError {
 string_enum! {
     /// Причина:
     /// - `budget` — кончился лимит (дня или разговора)
+    /// - `parallel_turns_limit` — у человека уже идёт предельное число ходов ИИ (тариф без доп. использования) — дождаться ответа на предыдущие вопросы
     /// - `rate_limited` — сервис модели перегружен — повторите
     /// - `api` — сбой сервиса модели
     /// - `refusal` — модель отказалась отвечать
@@ -4679,6 +5031,7 @@ string_enum! {
     /// - `batch_abandoned` — пачка брошена (процесс перезапущен)
     ChatHistoryErrorCode {
         Budget = "budget",
+        ParallelTurnsLimit = "parallel_turns_limit",
         RateLimited = "rate_limited",
         Api = "api",
         Refusal = "refusal",
@@ -4693,6 +5046,28 @@ string_enum! {
         StreamFailed = "stream_failed",
         BatchFailed = "batch_failed",
         BatchAbandoned = "batch_abandoned",
+    }
+}
+
+/// Упоминание через «@» в вопросе из истории: вид, id и название для чипа
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+#[non_exhaustive]
+pub struct ChatHistoryMention {
+    /// id упомянутого — как его отдал GET …/chat/mentions
+    pub id: String,
+    /// Название упомянутого на момент отправки вопроса — то же, что title в GET …/chat/mentions (документ и номер, имя контрагента, название задания). Сохраняется с вопросом: при чтении истории 1С не спрашивают, позднее переименование не отражается. null — у вопросов, отправленных до появления поля
+    pub title: Option<String>,
+    /// Что упомянуто: `proposal` — предложение (документ для 1С), id — его номер P-000123; `counterparty` — контрагент из 1С компании, id — его ссылка из поиска; `batch` — задание пачки (разбор выписки, входящие ЭСФ), id — bat_…
+    #[serde(rename = "type")]
+    pub type_: ChatHistoryMentionType,
+}
+
+string_enum! {
+    /// Что упомянуто: `proposal` — предложение (документ для 1С), id — его номер P-000123; `counterparty` — контрагент из 1С компании, id — его ссылка из поиска; `batch` — задание пачки (разбор выписки, входящие ЭСФ), id — bat_…
+    ChatHistoryMentionType {
+        Proposal = "proposal",
+        Counterparty = "counterparty",
+        Batch = "batch",
     }
 }
 
@@ -4715,10 +5090,12 @@ impl Default for ChatHistoryProposal {
     }
 }
 
-/// Вопрос ИИ к человеку
+/// Вопрос ИИ к человеку. Уточнение, которое ещё ждёт ответа, сюда не попадает — оно приходит только полем awaiting разговора, чтобы экран не показал его дважды
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[non_exhaustive]
 pub struct ChatHistoryQuestion {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub answer: Option<ChatHistoryQuestionAnswer>,
     /// Вопрос ИИ
     pub kind: String,
     /// Номер предложения, к которому вопрос
@@ -4731,10 +5108,35 @@ pub struct ChatHistoryQuestion {
 impl Default for ChatHistoryQuestion {
     fn default() -> Self {
         Self {
+            answer: None,
             kind: "question".to_owned(),
             proposal_id: None,
             text: Default::default(),
         }
+    }
+}
+
+/// Что человек ответил на уточняющий вопрос. Нет поля — ответа не было (вопрос закрыт) или это вопрос по документу
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+#[non_exhaustive]
+pub struct ChatHistoryQuestionAnswer {
+    /// Свой ответ; у ответа сообщением — его текст (один на все вопросы этого уточнения)
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub other: Option<String>,
+    /// Выбранные варианты (их подписи); у ответа сообщением — пусто
+    pub selected: Vec<String>,
+    /// true — человек пропустил этот вопрос в форме, не отвечая (selected пуст, other нет)
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub skipped: Option<bool>,
+    /// choice — ответил в форме выбора; message — написал сообщением вместо формы
+    pub via: ChatHistoryQuestionAnswerVia,
+}
+
+string_enum! {
+    /// choice — ответил в форме выбора; message — написал сообщением вместо формы
+    ChatHistoryQuestionAnswerVia {
+        Choice = "choice",
+        Message = "message",
     }
 }
 
@@ -4794,6 +5196,98 @@ string_enum! {
     }
 }
 
+/// Упоминание через «@» в вопросе: вид и id
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+pub struct ChatMention {
+    /// id упомянутого — как его отдал GET …/chat/mentions
+    pub id: String,
+    /// Что упомянуто: `proposal` — предложение (документ для 1С), id — его номер P-000123; `counterparty` — контрагент из 1С компании, id — его ссылка из поиска; `batch` — задание пачки (разбор выписки, входящие ЭСФ), id — bat_…
+    #[serde(rename = "type")]
+    pub type_: ChatMentionType,
+}
+
+impl ChatMention {
+    /// Creates the model from its required fields; every optional field is unset.
+    pub fn new(id: impl Into<String>, type_: ChatMentionType) -> Self {
+        Self {
+            id: id.into(),
+            type_,
+        }
+    }
+}
+
+/// То, что можно упомянуть через «@»
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+#[non_exhaustive]
+pub struct ChatMentionItem {
+    /// Вторая строка: сумма документа, БИН контрагента, дата задания; null — нечего добавить
+    pub hint: Option<String>,
+    /// id для поля mentions вопроса
+    pub id: String,
+    /// Как показать в списке и в поле ввода: название документа с номером, имя контрагента, название задания (данные компании)
+    pub title: String,
+    /// Что упомянуто: `proposal` — предложение (документ для 1С), id — его номер P-000123; `counterparty` — контрагент из 1С компании, id — его ссылка из поиска; `batch` — задание пачки (разбор выписки, входящие ЭСФ), id — bat_…
+    #[serde(rename = "type")]
+    pub type_: ChatMentionItemType,
+}
+
+string_enum! {
+    /// Что упомянуто: `proposal` — предложение (документ для 1С), id — его номер P-000123; `counterparty` — контрагент из 1С компании, id — его ссылка из поиска; `batch` — задание пачки (разбор выписки, входящие ЭСФ), id — bat_…
+    ChatMentionItemType {
+        Proposal = "proposal",
+        Counterparty = "counterparty",
+        Batch = "batch",
+    }
+}
+
+/// Что можно упомянуть через «@»
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+#[non_exhaustive]
+pub struct ChatMentionSearch {
+    /// Найденное, по видам в порядке запроса; внутри вида — свежие сверху
+    pub data: Vec<ChatMentionItem>,
+    /// Виды, по которым поиск сейчас невозможен, и почему: кабинет прячет раздел или показывает причину
+    pub unavailable: Vec<ChatMentionUnavailable>,
+}
+
+string_enum! {
+    /// Что упомянуто: `proposal` — предложение (документ для 1С), id — его номер P-000123; `counterparty` — контрагент из 1С компании, id — его ссылка из поиска; `batch` — задание пачки (разбор выписки, входящие ЭСФ), id — bat_…
+    ChatMentionType {
+        Proposal = "proposal",
+        Counterparty = "counterparty",
+        Batch = "batch",
+    }
+}
+
+/// Вид упоминаний, который сейчас не найти
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+#[non_exhaustive]
+pub struct ChatMentionUnavailable {
+    /// `no_access` — нет права видеть документы компании; `onec_not_linked` — 1С не подключена; `onec_unavailable` — 1С сейчас не ответила
+    pub reason: ChatMentionUnavailableReason,
+    /// Что упомянуто: `proposal` — предложение (документ для 1С), id — его номер P-000123; `counterparty` — контрагент из 1С компании, id — его ссылка из поиска; `batch` — задание пачки (разбор выписки, входящие ЭСФ), id — bat_…
+    #[serde(rename = "type")]
+    pub type_: ChatMentionUnavailableType,
+}
+
+string_enum! {
+    /// `no_access` — нет права видеть документы компании; `onec_not_linked` — 1С не подключена; `onec_unavailable` — 1С сейчас не ответила
+    ChatMentionUnavailableReason {
+        NoAccess = "no_access",
+        OnecNotLinked = "onec_not_linked",
+        OnecUnavailable = "onec_unavailable",
+    }
+}
+
+string_enum! {
+    /// Что упомянуто: `proposal` — предложение (документ для 1С), id — его номер P-000123; `counterparty` — контрагент из 1С компании, id — его ссылка из поиска; `batch` — задание пачки (разбор выписки, входящие ЭСФ), id — bat_…
+    ChatMentionUnavailableType {
+        Proposal = "proposal",
+        Counterparty = "counterparty",
+        Batch = "batch",
+    }
+}
+
 tagged_union! {
     /// Сообщение разговора: вопрос человека (role = user) или ответ ИИ (role = assistant)
     ChatMessage, tag = "role" {
@@ -4814,6 +5308,12 @@ pub struct ChatMessageRequest {
     /// Продолжить разговор с этим id. Без него — новый разговор, его id придёт в заголовке X-Dialog-Id
     #[serde(default, skip_serializing_if = "Option::is_none", with = "nullable")]
     pub dialog_id: Option<Option<String>>,
+    /// Усилие ИИ на этот вопрос: low \< medium \< high \< xhigh \< max — глубже думает, дольше и дороже (больше расход лимита). Не прислано или null — усилие выбирает Tungo. Только на тарифе с выбором усилия (max_effort тарифа в GET /v1/plans не null): иначе 402 effort_not_in_plan. Выше max_effort тарифа — опускается до него. Ответ на уточняющий вопрос продолжает ход с прежним усилием. Ключу API тариф не нужен: усилие — как прислано
+    #[serde(default, skip_serializing_if = "Option::is_none", with = "nullable")]
+    pub effort: Option<Option<ChatMessageRequestEffort>>,
+    /// Упоминания через «@» в этом вопросе, до 10: ИИ получит их вместе с вопросом. Каждое проверяется на доступ: нет объекта в этой компании или нет права его видеть — 404 (error.code = mention_not_found, error.index — номер в списке), ход не начинается. Неверная форма — 400 (error.code = mentions_invalid)
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub mentions: Option<Vec<ChatMention>>,
     /// Вопрос человека, до 4000 знаков; можно не писать, если приложены файлы
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub message: Option<String>,
@@ -4835,11 +5335,70 @@ pub struct ChatMessageRequest {
 }
 
 string_enum! {
+    /// Усилие ИИ на этот вопрос: low \< medium \< high \< xhigh \< max — глубже думает, дольше и дороже (больше расход лимита). Не прислано или null — усилие выбирает Tungo. Только на тарифе с выбором усилия (max_effort тарифа в GET /v1/plans не null): иначе 402 effort_not_in_plan. Выше max_effort тарифа — опускается до него. Ответ на уточняющий вопрос продолжает ход с прежним усилием. Ключу API тариф не нужен: усилие — как прислано
+    ChatMessageRequestEffort {
+        Low = "low",
+        Medium = "medium",
+        High = "high",
+        Xhigh = "xhigh",
+        Max = "max",
+    }
+}
+
+string_enum! {
     /// Режим хода: auto (по умолчанию) — ИИ сам решает, ответить или подготовить документ; ask — только ответ и разбор, без документов; document — подготовить документ
     ChatMessageRequestMode {
         Auto = "auto",
         Ask = "ask",
         Document = "document",
+    }
+}
+
+/// Предложенное следующее действие под ответом ИИ. Сам ИИ его не запускает: действие начинается только новым вопросом человека
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+#[non_exhaustive]
+pub struct ChatNextAction {
+    /// Код действия — по нему кабинет подписывает кнопку:
+    /// - `prepare_document` — подготовить документ для 1С; params.kind — вид документа
+    /// - `run_check` — запустить проверку учёта
+    /// - `build_tax_form` — собрать налоговую форму; params.form — код формы, если назван
+    /// - `check_counterparty` — проверить контрагента по спискам КГД
+    pub code: ChatNextActionCode,
+    /// Параметры действия, плоские. У prepare_document есть kind — вид документа: sale, purchase, bank_receipt, bank_payment, cash_order_in, cash_order_out, advance_report, inventory_writeoff, counterparty, contract
+    pub params: BTreeMap<String, ChatNextActionParamsValue>,
+    /// Текст нового вопроса от имени человека: нажатие кнопки — обычный POST …/chat с этим message в том же разговоре
+    pub prompt: String,
+}
+
+string_enum! {
+    /// Код действия — по нему кабинет подписывает кнопку:
+    /// - `prepare_document` — подготовить документ для 1С; params.kind — вид документа
+    /// - `run_check` — запустить проверку учёта
+    /// - `build_tax_form` — собрать налоговую форму; params.form — код формы, если назван
+    /// - `check_counterparty` — проверить контрагента по спискам КГД
+    ChatNextActionCode {
+        PrepareDocument = "prepare_document",
+        RunCheck = "run_check",
+        BuildTaxForm = "build_tax_form",
+        CheckCounterparty = "check_counterparty",
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(untagged)]
+#[non_exhaustive]
+#[allow(clippy::large_enum_variant)]
+pub enum ChatNextActionParamsValue {
+    Boolean(bool),
+    Number(f64),
+    String(String),
+    /// Any other JSON value.
+    Other(Value),
+}
+
+impl Default for ChatNextActionParamsValue {
+    fn default() -> Self {
+        Self::Other(Value::Null)
     }
 }
 
@@ -4875,6 +5434,73 @@ pub struct ChatStopResult {
     pub id: String,
     /// true — ход шёл и остановлен; false — ход уже не шёл
     pub stopped: bool,
+}
+
+/// Подсказка пустого чата
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+#[non_exhaustive]
+pub struct ChatSuggestion {
+    /// `ask` — подставить `prompt` в поле ввода; `connect_onec` — открыть подключение 1С
+    pub action: ChatSuggestionAction,
+    /// Код подсказки — постоянное имя карточки в настройке (для значка и аналитики); текст по нему подбирать не нужно
+    pub code: String,
+    /// Пояснение под заголовком
+    pub hint: String,
+    /// Текст вопроса для поля ввода при нажатии (у `connect_onec` не нужен — совпадает с заголовком)
+    pub prompt: String,
+    /// Карточка сезонная: показана, потому что сегодня её окно показа; такие стоят в разделе первыми
+    pub seasonal: bool,
+    /// Заголовок карточки на языке ответа, даты уже подставлены
+    pub title: String,
+}
+
+string_enum! {
+    /// `ask` — подставить `prompt` в поле ввода; `connect_onec` — открыть подключение 1С
+    ChatSuggestionAction {
+        Ask = "ask",
+        ConnectOnec = "connect_onec",
+    }
+}
+
+/// Раздел подсказок
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+#[non_exhaustive]
+pub struct ChatSuggestionGroup {
+    /// Код раздела — постоянное имя (для значка вкладки)
+    pub code: String,
+    /// Подсказки раздела по порядку показа: сезонные первыми; только подходящие компании сейчас и доступные человеку по правам; не больше настройки chat.suggestions_per_group
+    pub suggestions: Vec<ChatSuggestion>,
+    /// Название раздела на языке ответа
+    pub title: String,
+}
+
+/// Подсказки пустого чата с текстами — по состоянию компании, правам человека и календарю
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+#[non_exhaustive]
+pub struct ChatSuggestions {
+    /// Разделы по порядку показа; пустых разделов нет
+    pub data: Vec<ChatSuggestionGroup>,
+    /// Язык текстов в ответе
+    pub locale: ChatSuggestionsLocale,
+    /// Подключена ли 1С компании: от этого зависит набор подсказок
+    pub onec_linked: bool,
+}
+
+string_enum! {
+    /// Язык текстов в ответе
+    ChatSuggestionsLocale {
+        Ru = "ru",
+        Kk = "kk",
+    }
+}
+
+string_enum! {
+    /// Откуда название разговора: first_message — первый вопрос (пока ИИ не придумал название, или не смог); ai — придумал ИИ после первого ответа (событие title в потоке хода); user — задал человек (PATCH …/chat/{id}), ИИ его не меняет
+    ChatTitleSource {
+        FirstMessage = "first_message",
+        Ai = "ai",
+        User = "user",
+    }
 }
 
 /// Размер и самая большая цена первого вызова модели
@@ -4923,11 +5549,12 @@ string_enum! {
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[non_exhaustive]
 pub struct ChatTurnError {
-    /// Только у code = budget: лимит можно попросить поднять у админа
+    /// Только у code = budget с limit_kind day или dialog: лимит можно попросить поднять у владельца или админа организации. Нет — просить некого (человек сам владелец или админ) или причина не в этом лимите
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub can_request_more: Option<bool>,
     /// Причина:
     /// - `budget` — кончился лимит (дня или разговора)
+    /// - `parallel_turns_limit` — у человека уже идёт предельное число ходов ИИ (тариф без доп. использования) — дождаться ответа на предыдущие вопросы
     /// - `rate_limited` — сервис модели перегружен — повторите
     /// - `api` — сбой сервиса модели
     /// - `refusal` — модель отказалась отвечать
@@ -4943,7 +5570,13 @@ pub struct ChatTurnError {
     /// - `batch_failed` — пачка прервана ошибкой
     /// - `batch_abandoned` — пачка брошена (процесс перезапущен)
     pub code: ChatTurnErrorCode,
-    /// Только у code = budget: day — дневной лимит, dialog — лимит разговора
+    /// Только у code = budget — почему ход остановлен:
+    /// - `day` — дневной лимит человека исчерпан — продолжить завтра (по Алматы) или поднять лимит
+    /// - `dialog` — лимит разговора исчерпан — начать новый разговор
+    /// - `turn` — потолок расхода на один вопрос — уточнить или разбить вопрос
+    /// - `plan` — лимит тарифа или доп. использования организации — ждать обновления лимита или поднять его в настройках оплаты
+    /// - `disabled` — ИИ временно выключен на платформе — повторить позже
+    /// - `meter` — расход не удалось проверить или записать — ход остановлен, чтобы не тратить вслепую; повторить позже
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub limit_kind: Option<ChatTurnErrorLimitKind>,
     /// Текст для человека — показать в ленте ответа
@@ -4959,6 +5592,7 @@ pub struct ChatTurnError {
 string_enum! {
     /// Причина:
     /// - `budget` — кончился лимит (дня или разговора)
+    /// - `parallel_turns_limit` — у человека уже идёт предельное число ходов ИИ (тариф без доп. использования) — дождаться ответа на предыдущие вопросы
     /// - `rate_limited` — сервис модели перегружен — повторите
     /// - `api` — сбой сервиса модели
     /// - `refusal` — модель отказалась отвечать
@@ -4975,6 +5609,7 @@ string_enum! {
     /// - `batch_abandoned` — пачка брошена (процесс перезапущен)
     ChatTurnErrorCode {
         Budget = "budget",
+        ParallelTurnsLimit = "parallel_turns_limit",
         RateLimited = "rate_limited",
         Api = "api",
         Refusal = "refusal",
@@ -4993,10 +5628,20 @@ string_enum! {
 }
 
 string_enum! {
-    /// Только у code = budget: day — дневной лимит, dialog — лимит разговора
+    /// Только у code = budget — почему ход остановлен:
+    /// - `day` — дневной лимит человека исчерпан — продолжить завтра (по Алматы) или поднять лимит
+    /// - `dialog` — лимит разговора исчерпан — начать новый разговор
+    /// - `turn` — потолок расхода на один вопрос — уточнить или разбить вопрос
+    /// - `plan` — лимит тарифа или доп. использования организации — ждать обновления лимита или поднять его в настройках оплаты
+    /// - `disabled` — ИИ временно выключен на платформе — повторить позже
+    /// - `meter` — расход не удалось проверить или записать — ход остановлен, чтобы не тратить вслепую; повторить позже
     ChatTurnErrorLimitKind {
         Day = "day",
         Dialog = "dialog",
+        Turn = "turn",
+        Plan = "plan",
+        Disabled = "disabled",
+        Meter = "meter",
     }
 }
 
@@ -5021,6 +5666,10 @@ pub struct ChatTurnResult {
     pub dialog_id: String,
     /// Ошибки хода (как error в событии error); пусто — без ошибок
     pub errors: Vec<ChatTurnError>,
+    /// Вопросы-продолжения под ответом, до 3, на языке разговора: нажатие — обычный новый вопрос с этим текстом. Пусто — предложить нечего
+    pub followups: Vec<String>,
+    /// Предложенное следующее действие; null — нет
+    pub next_action: Option<ChatNextAction>,
     /// Открытый уточняющий вопрос: ответ — POST …/chat/{dialog_id}/answer; null — вопроса нет
     pub pending_question: Option<ChatPendingQuestion>,
     /// Документы, которые ИИ подготовил в этом ходе
@@ -5076,6 +5725,9 @@ pub struct ChatUserMessage {
     pub attachments: Option<Vec<ChatAttachmentMeta>>,
     /// Устойчивый id сообщения: \<dialog_id\>:\<номер хода\>:u
     pub id: String,
+    /// Упоминания через «@» в этом вопросе, если были: вид, id и название на момент отправки
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub mentions: Option<Vec<ChatHistoryMention>>,
     /// Вопрос идущего хода: ответа ещё нет, его дочитывают потоком (GET …/chat/{id}/events?turn=). Только у последнего сообщения
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub pending: Option<bool>,
@@ -5091,6 +5743,7 @@ impl Default for ChatUserMessage {
             at: Default::default(),
             attachments: None,
             id: Default::default(),
+            mentions: None,
             pending: None,
             role: "user".to_owned(),
             text: Default::default(),
@@ -5108,7 +5761,7 @@ pub struct Company {
     pub created_at: String,
     /// Компания — её id во всех адресах /v1/companies/{co}/… (co_…)
     pub id: String,
-    pub legal_form: CompanyLegalForm,
+    pub legal_form: Option<CompanyLegalForm>,
     /// Название компании, как его ввели при заведении
     pub name: String,
     /// Ваши права в этой компании — по ним кабинет прячет или гасит кнопки (нет proposals.approve — нет «Одобрить»). По ключу API — права, суженные до прав ключа. Порядок — как в каталоге прав
@@ -5438,7 +6091,7 @@ pub struct CompanyCounts {
 }
 
 string_enum! {
-    /// Форма: ip — ИП, too — ТОО, ao — АО, other — другое
+    /// Форма: ip — ИП, too — ТОО, ao — АО, other — другое; null — ещё не указана (задаётся в карточке компании: PATCH /v1/companies/{co})
     CompanyLegalForm {
         Ip = "ip",
         Too = "too",
@@ -5458,7 +6111,7 @@ pub struct CompanyListItem {
     pub created_at: String,
     /// Компания — её id во всех адресах /v1/companies/{co}/… (co_…)
     pub id: String,
-    pub legal_form: CompanyLegalForm,
+    pub legal_form: Option<CompanyLegalForm>,
     /// Название компании, как его ввели при заведении
     pub name: String,
     /// Ваши права в этой компании — по ним кабинет прячет или гасит кнопки (нет proposals.approve — нет «Одобрить»). По ключу API — права, суженные до прав ключа. Порядок — как в каталоге прав
@@ -5683,19 +6336,64 @@ pub struct ErrorDetail {
     /// При code = login_method_not_allowed — какими способами входа организация пускает к своим данным: email_otp — код из почты, google, apple, telegram, sso — SSO организации. Предложить выйти и войти одним из них.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub allowed_methods: Option<Vec<ErrorDetailAllowedMethodItem>>,
+    /// При code = subscription_unpaid_debt — сколько оплатить, в тиынах: сумма всех неоплаченных счетов подписки.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub amount_tiyn: Option<i64>,
     /// Уточнение вида: по нему выбирается действие интерфейса (кнопка «Пополнить», «Войти иначе»…). Нет поля — хватает type и message. Известные коды:
+    /// - `cannot_ban_self` (409) — админка: закрыть вход самому себе нельзя
+    /// - `user_not_banned` (409) — админка: вход этому пользователю не закрыт — открывать нечего
     /// - `sso_domain_taken` (409) — домен SSO уже подтверждён другой организацией
     /// - `sso_last_verified_domain` (409) — включён обязательный вход, а это последний подтверждённый домен — сначала выключить обязательный вход
     /// - `sso_login_required` (400) — включить обязательный вход можно только из сессии, открытой через SSO этой организации
+    /// - `login_methods_lockout` (400) — новый список способов входа запер бы автора правки или админов организации: показать message и предложить добавить в список способ, которым они входят
     /// - `domain_verification_failed` (400) — запись DNS для домена не найдена или не совпала — проверить и повторить
     /// - `oidc_openid_scope_required` (400) — в scopes сервера входа OIDC нет openid — добавить её: без неё вход через SSO не пройдёт
     /// - `enterprise_only` (403) — возможность есть только на тарифе Enterprise
+    /// - `team_only` (403) — раздел команды (сотрудники, приглашения, роли, политики, журнал и расходы организации, покупка мест, подключения SSO) запрошен для личной организации — он есть только у Team и Enterprise; кабинету показать «это есть в тарифе Team»
+    /// - `team_checkout_required` (403) — команду нельзя завести без оплаты: она появляется вместе с тарифом Team — POST /v1/team-checkouts; кабинету вести на «Оформить Team»
+    /// - `team_plan_required` (403) — подключить SSO и включить обязательный вход может только организация с оплаченным тарифом Team (или Enterprise): команда заведена, но тариф не оформлен или не оплачен — показать оформление тарифа
     /// - `groups_limit` (429) — достигнут предел групп в организации
     /// - `custom_roles_limit` (429) — достигнут предел своих ролей в организации
     /// - `group_managed_by_directory` (409) — группа из каталога: название и состав меняются только там
     /// - `group_member_not_in_workspace` (400) — в группу можно добавить только сотрудника этой организации
     /// - `role_above_ceiling` (400) — роль даёт права выше потолка организации
     /// - `unknown_model` (400) — такой модели нет — список в available_models
+    /// - `price_required` (400) — админка, тариф целиком: у платного тарифа нужна цена (price)
+    /// - `adjustment_amount_zero` (400) — админка, корректировка баланса: сумма — ноль; указать, сколько начислить (плюс) или списать (минус)
+    /// - `adjustment_over_limit` (400) — админка, корректировка баланса: сумма за раз больше потолка из настройки billing.adjustment — разбить на части или поднять потолок (суперадминистратор)
+    /// - `adjustment_note_required` (400) — админка, корректировка баланса: пояснение из одних пробелов — написать причину от 3 знаков
+    /// - `adjustment_key_invalid` (400) — админка, корректировка баланса: ключ повтора не 8–200 знаков (по HTTP обычно раньше ловится как validation_failed)
+    /// - `adjustment_key_reused` (409) — админка, корректировка баланса: этот idempotency_key уже применён с другой суммой или пояснением — для новой корректировки нужен новый ключ (новое нажатие «Применить»)
+    /// - `adjustment_exceeds_balance` (409) — админка, корректировка баланса: списание больше свободного остатка (баланс минус брони идущих вызовов; сколько можно — в message) — уменьшить сумму
+    /// - `site_post_not_found` (404) — админка, сайт: статьи нет
+    /// - `site_slug_taken` (409) — админка, сайт: статья с таким адресом уже есть
+    /// - `site_slug_locked` (409) — админка, сайт: адрес опубликованной статьи не меняется
+    /// - `site_post_incomplete` (409) — админка, сайт: статью нельзя опубликовать — нет одной из языковых версий, поля или в тексте HTML; фразы — в error.blockers
+    /// - `site_post_not_published` (409) — админка, сайт: статья не опубликована — снимать нечего
+    /// - `site_post_published` (409) — админка, сайт: опубликованную статью не удалить — сначала снять с сайта
+    /// - `site_legal_not_found` (404) — админка, сайт: такого документа в наборе нет
+    /// - `site_legal_revision_not_found` (404) — админка, сайт: у документа нет редакции с таким номером
+    /// - `site_draft_changed` (409) — админка, сайт: черновик статьи или документа изменился после чтения (draft_version не совпал) — перечитать, проверить и публиковать заново
+    /// - `site_legal_no_draft` (409) — админка, сайт: у документа нет черновика — публиковать нечего
+    /// - `site_legal_unchanged` (409) — админка, сайт: черновик совпадает с действующей редакцией
+    /// - `site_legal_unsafe` (409) — админка, сайт: в тексте документа HTML или опасная ссылка; фразы — в error.blockers
+    /// - `site_legal_publish_requires_superadmin` (403) — админка, сайт: редакцию документа публикует только суперадминистратор; черновик готовит любой администратор
+    /// - `site_legal_date_before_previous` (400) — админка, сайт: дата редакции раньше прежней редакции
+    /// - `site_trackers_requires_superadmin` (403) — админка, сайт: счётчики сайта меняет только суперадминистратор
+    /// - `site_trackers_changed` (409) — админка, сайт: счётчики изменили после чтения (version не совпал) — перечитать и проверить заново
+    /// - `site_rebuild_not_configured` (409) — админка, сайт: запуск пересборки сайта не настроен на сервере
+    /// - `lago_rejected` (409) — админка, тариф целиком: Lago отказал по существу (4xx, текст Lago в message) — правила не изменены, повтор без правки не поможет
+    /// - `price_mismatch` (400) — админка, тариф целиком: цена не сходится с правилами (место без per_seat, per_seat без цены места, цена у бесплатного)
+    /// - `pricing_requires_superadmin` (403) — цены моделей (POST /admin/v1/usage-rates) и тарифы (PUT /admin/v1/plans/{code}, …/full) меняет только суперадминистратор
+    /// - `price_change_too_large` (400) — цена модели или тарифа меняется за раз сильнее, чем разрешает настройка billing.price_change (max_factor) — проверить нули или сначала поднять предел
+    /// - `price_zero_needs_flag` (400) — цена модели или плата за период тарифа обнуляется — только с явным allow_zero: true
+    /// - `speech_disabled` (404) — голосовой ввод на сервере не включён — кнопку микрофона спрятать (speech.enabled в GET /v1/me)
+    /// - `speech_bad_lang` (400) — голосовой ввод: lang не указан или не из speech.languages
+    /// - `speech_too_large` (413) — голосовой ввод: запись больше предела (настройка speech.limits) — записать короче
+    /// - `speech_bad_format` (415) — голосовой ввод: тип записи не принимается, запись пуста или повреждена — записать заново
+    /// - `speech_too_long` (422) — голосовой ввод: запись длиннее speech.max_seconds — записать короче или по частям
+    /// - `speech_rate_limited` (429) — голосовой ввод: слишком часто или исчерпан суточный потолок человека — показать error.message, повторить после Retry-After
+    /// - `speech_unavailable` (503) — голосовой ввод: распознавание сейчас недоступно — повторить позже или набрать вопрос с клавиатуры
     /// - `model_not_allowed` (403) — политика организации не разрешает эту модель, а подходящей разрешённой нет — админу дополнить список
     /// - `retention_too_short` (400) — срок хранения меньше наименьшего
     /// - `audit_export_range` (400) — неверный период выгрузки журнала: конец раньше начала или период слишком длинный
@@ -5705,6 +6403,11 @@ pub struct ErrorDetail {
     /// - `login_denied` (403) — вход из 1С отклонён на сайте Tungo — 1С показывает отказ
     /// - `code_expired` (410) — код входа из 1С устарел или уже использован — 1С просит новый код
     /// - `code_gone` (410) — код входа из 1С уже подтверждён, отклонён или устарел — на сайте подтверждать нечего
+    /// - `link_expired` (401) — вход в Tungo из 1С устарел: вышел срок ключа от входа или 1С долго не обращалась (onec.connector.link_key_ttl_days, link_idle_days) — 1С просит войти заново
+    /// - `extension_outdated` (400) — расширение Tungo для 1С старой версии: не шлёт protocol ≥ 2 и не умеет показывать число сверки — обновить расширение
+    /// - `match_required` (400) — подтверждение входа из 1С без числа сверки: человек нажимает на странице число, показанное в окне его 1С
+    /// - `onec_link_wrong_match` (409) — на странице нажато не то число сверки: код входа из 1С погашен, человек час не может подтверждать входы из 1С
+    /// - `onec_link_locked` (429) — недавно было нажато не то число сверки — подтверждать входы из 1С можно снова через час (Retry-After)
     /// - `invalid_api_key` (401) — ключ API неверен (опечатка или удалён)
     /// - `key_revoked` (401) — ключ API отозван (при правке ключа — 409 с тем же code: отозванный ключ не меняется)
     /// - `key_expired` (401) — срок ключа API истёк — сменить секрет (POST …/api-keys/{id}/roll: срок начнётся заново) или выпустить новый (при правке срока — 409 с тем же code: PATCH истёкший ключ не оживляет)
@@ -5717,6 +6420,7 @@ pub struct ErrorDetail {
     /// - `balance_exhausted` (402) — баланс доп. использования кончился. Владельцу/админу — «Пополнить баланс» или включить автопополнение; остальным — сообщить им
     /// - `workspace_cap_reached` (402) — достигнут месячный потолок доп. использования организации. resets_at — 1-е число следующего месяца, 00:00 по Алматы; раньше — если админ поднимет потолок
     /// - `report_busy` (429) — сейчас собирается много отчётов команды: повторить через время из Retry-After
+    /// - `access_keys_unavailable` (503) — админ-API: ключи команды Cloudflare Access не получены — пропуск проверить нечем, повторить через минуту
     /// - `report_timeout` (503) — отчёт команды не успел собраться: сократить период или выбрать разбивку по месяцам
     /// - `company_cap_reached` (402) — достигнут месячный потолок доп. использования компании. Письмо владельцу и админам уже отправлено. resets_at — 1-е число; раньше — если админ поднимет потолок (PUT /v1/workspaces/{ws}/team/company-caps/{co})
     /// - `member_cap_reached` (402) — достигнут личный месячный потолок доп. использования сотрудника. resets_at — 1-е число; раньше — если админ поднимет его потолок
@@ -5725,7 +6429,9 @@ pub struct ErrorDetail {
     /// - `platform_cap_reached` (402) — достигнут месячный потолок трат платформы. resets_at — 1-е число следующего месяца, 00:00 по Алматы; раньше — поднять потолок в PUT /v1/workspaces/{ws}/platform/account
     /// - `platform_disabled` (402) — платформа выключена в организации: вызовы по ключам и автоматизации остановлены. Включить — PUT /v1/workspaces/{ws}/platform/account
     /// - `free_plan_chat_only` (402) — бесплатный тариф: пачки из кабинета только на платных тарифах. Ключам API и автоматизациям тариф не нужен
-    /// - `free_limit_unavailable` (402) — бесплатный лимит этой учётной записи не положен (проверка регистрации или решение администратора) — оформить тариф
+    /// - `free_limit_unavailable` (402) — бесплатный лимит этой учётной записи не положен; почему — error.free_blocked_reason, готовый текст с причиной и тем, что делать, — message (ru или kk по языку ответов ИИ из профиля)
+    /// - `plan_company_limit` (402) — в организации уже столько компаний не в архиве, сколько разрешает тариф (max_companies в GET /v1/plans; limit и plan_code — в ответе): новую не завести и из архива не вернуть. Убрать лишнюю в архив или перейти на тариф больше
+    /// - `effort_not_in_plan` (402) — поле effort в чате на тарифе без выбора усилия (max_effort тарифа null, например бесплатный): ход не начат. Прислать вопрос без effort или оформить платный тариф
     /// - `model_not_in_plan` (402) — модель сильнее потолка тарифа (plans.model_ceiling): вызов не сделан; более сильные модели — на платных тарифах
     /// - `missing_permission` (403) — не хватает права в компании (или у ключа API); какого — в поле permission
     /// - `login_method_not_allowed` (403) — организация пускает к своим данным только после входа другим способом; какими — в allowed_methods. Предложить выйти и войти так
@@ -5741,6 +6447,7 @@ pub struct ErrorDetail {
     /// - `scenario_output_required` (409) — у сценария форма итога, а в замене (PUT) нет ни steps, ни output: передайте output явно (null — снять форму)
     /// - `automation_queue_full` (429) — у компании слишком много запусков в очереди: повторите позже (событие хука отправитель повторит сам)
     /// - `restarting` (503) — сервис перезапускается: новый ход не начат — повторите через Retry-After
+    /// - `team_checkout_forbidden` (403) — оформление Team: человек больше не владелец и не админ команды этого оформления — продолжить нельзя
     /// - `company_suspended` (403) — работа с компанией приостановлена (решение платформы или оплаты); карточка видна, работать, править и архивировать нельзя (архив — 409 с тем же code)
     /// - `company_archived` (403) — компания в архиве: карточка видна, работать с ней нельзя. Вернуть — POST /v1/companies/{company_id}/unarchive (владелец компании или владелец/админ организации)
     /// - `workspace_blocked` (403) — организация заблокирована администратором платформы — только поддержка Tungo
@@ -5748,6 +6455,7 @@ pub struct ErrorDetail {
     /// - `cors_not_supported` (403) — вызов API из чужого браузерного кода (CORS) не поддерживается: ключ API — секрет сервера
     /// - `api_keys_disabled_by_policy` (403) — политика организации запрещает ключи API
     /// - `owner_role_reserved` (403) — владельца компании назначает, меняет и снимает только владелец или админ организации
+    /// - `own_role_reserved` (403) — свою роль в компании управляющий участниками не меняет — только владелец или админ организации
     /// - `role_above_yours` (403) — у выдаваемой (или снимаемой) роли есть права, которых нет у вас; роль — в поле role, лишние права — в permissions
     /// - `not_key_creator` (403) — менять компании, права, срок и секрет ключа, снимать и поднимать его пределы записи в 1С может только тот, кто его выпустил (ужесточить пределы может любой админ)
     /// - `transfer_wider_than_target` (403) — передать ключ нельзя: у нового владельца нет нужного права (или доступа) в одной из компаний ключа
@@ -5760,10 +6468,27 @@ pub struct ErrorDetail {
     /// - `not_own_key` (403) — по ключу API виден только расход самого этого ключа
     /// - `webhooks_not_in_plan` (403) — вебхуков нет в тарифе организации
     /// - `admin_2fa_required` (403) — админ-API: у администратора платформы нет второго фактора или эта сессия не подтверждена кодом приложения-аутентификатора (POST /v1/auth/two-factor/enable, затем verify-totp)
+    /// - `access_pass_invalid` (401) — админ-API: пропуск Cloudflare Access не принят (подпись, издатель, приложение) — обновить страницу админки и войти в Access заново
+    /// - `access_pass_expired` (401) — админ-API: срок пропуска Cloudflare Access вышел — обновить страницу админки
+    /// - `access_pass_no_email` (403) — админ-API: пропуск Cloudflare Access без почты человека (сервисный токен) не принимается
+    /// - `access_user_not_found` (403) — админ-API: в Tungo нет пользователя с почтой из пропуска Cloudflare Access
+    /// - `access_email_unverified` (403) — админ-API: почта пользователя из пропуска Cloudflare Access в Tungo не подтверждена
+    /// - `access_not_admin` (403) — админ-API: у пользователя из пропуска Cloudflare Access нет роли платформы
+    /// - `manual_charge_over_cap` (403) — ручное списание с карты больше настройки billing.manual_charge (за раз или за сутки с организации) — только суперадминистратор
+    /// - `setting_requires_superadmin` (403) — денежную, антифрод или защитную настройку платформы (у неё guarded=true в списке настроек) меняет только суперадминистратор
+    /// - `setting_reason_required` (400) — смена денежной или защитной настройки платформы — только с причиной (reason, 3–500 символов)
+    /// - `staff_ban_requires_superadmin` (403) — закрыть или открыть вход сотруднику платформы может только суперадминистратор
     /// - `two_factor_required` (403) — отключить второй фактор, показать его секрет или выпустить резервные коды — только после кода из приложения-аутентификатора в этой сессии
+    /// - `two_factor_email_code_required` (403) — сотрудник платформы (admin, admin_pd, superadmin) включает и отключает второй фактор (POST /v1/auth/two-factor/enable, disable) только со свежим кодом из почты в поле email_code — запросить код: POST /v1/auth/two-factor/email-code
+    /// - `two_factor_email_code_invalid` (400) — включение или отключение второго фактора сотрудником: неверный код из почты (email_code) — ввести ещё раз или запросить новый
+    /// - `two_factor_email_code_expired` (400) — включение или отключение второго фактора сотрудником: код из почты устарел, уже использован или попытки кончились — запросить новый (POST /v1/auth/two-factor/email-code)
+    /// - `two_factor_email_code_not_needed` (400) — POST /v1/auth/two-factor/email-code: код из почты нужен только сотрудникам платформы — остальные включают второй фактор без него
+    /// - `target_two_factor_required` (409) — смена ролей платформы: новую роль (admin, admin_pd, superadmin) можно выдать только человеку с уже включённым и подтверждённым вторым фактором; снять роль можно и без него
+    /// - `no_companies_permissions` (400) — ключу без доступа к компаниям (no_companies) нельзя дать права, действующие в компаниях: убрать их или выбрать компании
     /// - `webhooks_require_all_companies` (403) — вебхуки — только ключу на все компании организации (при выпуске ключа — 400 с тем же code)
     /// - `audit_requires_all_companies` (403) — журнал организации — только ключу на все компании организации
     /// - `policy_blocked` (403) — одобрение: организация не доверяет ИИ записывать такой документ этим способом (поле level — уровень доверия); одобрить по одному или поднять уровень
+    /// - `onec_copy_disabled` (403) — загрузка копии базы 1С отключена на платформе: вариант «Загрузить копию базы» спрятать (onec.copy_upload в GET /v1/me), предложить 1С напрямую или Tungo Connector
     /// - `onec_read_only` (403) — одобрение: у пользователя 1С из подключения нет права записи — дать права в 1С
     /// - `validation_failed` (400) — тело или параметры запроса не прошли проверку: что не так с каждым полем — в fields (путь, код, текст по-русски). Подсветить поля формы; общий message — над формой
     /// - `invalid_json` (400) — тело запроса — не JSON-объект
@@ -5772,6 +6497,19 @@ pub struct ErrorDetail {
     /// - `email_code_unavailable` (400) — удаление аккаунта: у аккаунта нет почты для кода (вход через Telegram) — подтверждать свежим входом, без кода
     /// - `deletion_code_invalid` (400) — удаление аккаунта: неверный код из письма; сколько попыток осталось — attempts_left
     /// - `deletion_code_expired` (400) — удаление аккаунта: код истёк, попытки кончились или код не запрашивался — запросить новый (POST /v1/me/deletion/code)
+    /// - `email_required` (403) — вход через Telegram, а своей почты у аккаунта ещё нет: показать обязательный экран «Укажите почту» (POST /v1/me/email, затем POST /v1/me/email/verify); до привязки открыты только профиль, привязка, удаление аккаунта и выход
+    /// - `email_already_set` (409) — привязка почты: у аккаунта уже есть своя почта — экран «Укажите почту» не нужен, перечитать GET /v1/me
+    /// - `email_invalid` (400) — привязка почты: служебная почта Telegram (…@telegram.invalid) — попросить свою
+    /// - `disposable_email` (403) — привязка почты: временная почта не принимается — попросить постоянную
+    /// - `sso_required` (403) — привязка почты: для адреса вход только через SSO организации — код не шлём, попросить другую почту
+    /// - `email_code_invalid` (400) — привязка почты: неверный код из письма; сколько попыток осталось — attempts_left
+    /// - `email_code_expired` (400) — привязка почты: код истёк, попытки кончились или код не запрашивался — запросить новый (POST /v1/me/email)
+    /// - `email_binding_stale` (409) — привязка почты: аккаунт или сессия изменились, пока шла проверка — запросить код заново
+    /// - `telegram_account_has_data` (409) — привязка почты: у почты уже есть аккаунт Tungo, а в аккаунте Telegram уже есть данные — сами не объединяем: указать другую почту или написать в поддержку
+    /// - `telegram_already_linked` (409) — привязка почты: к аккаунту этой почты уже привязан другой Telegram — войти по почте и отвязать его или указать другую почту
+    /// - `email_unavailable` (409) — привязка почты: эту почту привязать нельзя — указать другую или написать в поддержку
+    /// - `mentions_invalid` (400) — чат: поле mentions неверного вида — список { type, id } из поиска упоминаний
+    /// - `mention_type_unknown` (400) — поиск упоминаний: неизвестный вид в types
     /// - `unsafe_url` (400) — адрес вебхука недопустим (внутренняя сеть, не HTTPS)
     /// - `idempotency_key_invalid` (400) — Idempotency-Key неверного вида
     /// - `payload_too_large` (413) — тело запроса (или события хука) больше допустимого; пределы — настройки платформы
@@ -5783,6 +6521,7 @@ pub struct ErrorDetail {
     /// - `onec_rejected` (400) — одобрение: 1С отклонила документ (причина — в message): исправить в 1С или построить предложение заново
     /// - `proposal_not_found` (404) — предложения с таким id нет в компании
     /// - `export_link_expired` (404) — ссылка на архив выгрузки истекла или неверна — получить новую: GET /v1/me/export
+    /// - `mention_not_found` (404) — чат: упомянутого объекта нет или к нему нет доступа (номер в списке mentions — поле index); ход не начат
     /// - `batch_not_found` (404) — одобрение пачкой: задания с таким batch_id нет (или в нём нет предложений)
     /// - `idempotency_in_progress` (409) — первый запрос с этим Idempotency-Key ещё выполняется — подождать и повторить, придёт тот же ответ
     /// - `idempotency_response_not_kept` (409) — запрос с этим Idempotency-Key уже выполнен, но копия ответа не хранится (в нём персональные данные): результат — по ссылке в ответе (dialog_url) или в списке; статус первого ответа — original_status
@@ -5792,6 +6531,7 @@ pub struct ErrorDetail {
     /// - `wrong_status` (409) — предложение уже не в том состоянии (поле status — нынешнее): обновить его
     /// - `wrong_state` (409) — запуск автоматизации уже не в том состоянии (поле state — нынешнее)
     /// - `dialog_closed` (409) — разговор закрыт (поле reason — почему): начать новый
+    /// - `approval_not_needed` (409) — отправить на одобрение: у вас самого есть право одобрять — записать документ обычным одобрением
     /// - `dialog_id_taken` (409) — разговор с таким dialog_id уже есть — для нового прислать другой id или не присылать его
     /// - `turn_in_progress` (409) — в разговоре уже идёт ход ИИ (поле turn — его номер): дождаться его конца или остановить
     /// - `turn_superseded` (409) — читаемый ход уже закончился и идёт следующий (поле turn) — читать его с начала
@@ -5804,12 +6544,22 @@ pub struct ErrorDetail {
     /// - `onec_conflict` (409) — одобрение: 1С отказала из-за конфликта (объект занят или изменён) — повторить позже
     /// - `onec_not_found` (409) — одобрение: в 1С нет объекта, на который ссылается документ — построить предложение заново
     /// - `plan_limit_reached` (429) — лимит окна тарифа исчерпан; resets_at и Retry-After — когда обновится. Показать время; если в message предложено доп. использование — дать кнопку включить
-    /// - `rate_limited` (429) — слишком часто (по ключу API, уведомления ePay с одного адреса, попытки кода второго фактора) — подождать Retry-After секунд
+    /// - `rate_limited` (429) — слишком часто (по ключу API, уведомления ePay с одного адреса, формы банка от одного человека, попытки кода второго фактора) — подождать Retry-After секунд
     /// - `concurrent_turns_limit` (429) — по ключу API уже идёт предельное число ходов ИИ одновременно — дождаться окончания
+    /// - `parallel_turns_limit` (429) — у человека уже идёт предельное число ходов ИИ одновременно (тариф без доп. использования, настройка usage.parallel_turns) — дождаться ответа на предыдущие вопросы; Retry-After
     /// - `api_keys_limit` (429) — в организации предельное число действующих ключей API — отозвать ненужные
     /// - `webhook_endpoints_limit` (429) — предельное число адресов вебхуков — удалить ненужные
+    /// - `enterprise_request_rate` (429) — слишком много заявок на Enterprise от одного человека за окно (настройка enterprise.request_rate): повторить после Retry-After
+    /// - `unknown_workspace` (400) — workspace_id в заявке на Enterprise — не организация этого человека
+    /// - `plan_not_for_team` (400) — оформление Team: тариф бесплатный или не для команды — выбрать тариф вида team из GET /v1/plans
+    /// - `plan_not_found` (404) — оформление Team: тарифа с таким кодом нет или он выключен
+    /// - `team_checkout_busy` (409) — оформление Team с этим ключом уже выполняется другим запросом — повторить через несколько секунд
+    /// - `team_checkout_closed` (409) — оформление Team закрыто (status в ответе: cancelled или expired) — начать новое с новым idempotency_key
+    /// - `team_checkout_completed` (409) — оформление Team уже оплачено — отменять нечего; подписку отменяют в оплате команды
+    /// - `too_many_team_checkouts` (409) — у человека уже max_open незавершённых оформлений Team — завершить или отменить их (DELETE /v1/team-checkouts/{id})
     /// - `export_too_soon` (429) — выгрузку данных можно запрашивать не чаще раза в сутки: next_request_at и Retry-After — когда можно снова
     /// - `hook_rate_limited` (429) — приём событий хука: больше automations.hook_events_per_minute в минуту — повторить через Retry-After секунд
+    /// - `lago_unavailable` (503) — админка, тариф целиком: Lago не настроен или не ответил (сеть, 5xx) — правила не изменены, повторить позже
     /// - `model_price_missing` (503) — у модели ИИ не задана цена — сбой настройки платформы, ничего не списано; повторить позже
     /// - `data_export_disabled` (503) — выгрузка данных на сервере не настроена (поддержка Tungo)
     /// - `webhooks_disabled` (503) — вебхуки на сервере не настроены
@@ -5827,8 +6577,9 @@ pub struct ErrorDetail {
     /// - `subscription_kind_mismatch` (409) — админка: действующая подписка оформлена на другой вид организации — вид не меняется, пока она идёт
     /// - `enterprise_features_active` (409) — админка: у организации подключены SSO или SCIM — сначала отключить, потом снимать Enterprise
     /// - `too_many_members_for_personal` (409) — админка: в личной организации один человек — сначала убрать остальных участников
-    /// - `open_debt` (409) — есть неоплаченный счёт — сначала оплатить; в плане удаления этот же код лежит в blockers
+    /// - `open_debt` (409) — есть неоплаченный счёт — сначала оплатить; в плане удаления этот же код лежит в blockers; так же отказывает удаление аккаунта (workspaces — у каких пространств долг)
     /// - `active_work` (409) — в организации идут ходы ИИ или автоматизации — дождаться окончания и повторить; в плане удаления этот же код лежит в blockers
+    /// - `deletion_guard_refused` (409) — внутреннее: условие вызывающего на удаление организации не выполнено (уборка черновика Team) — человеку не уходит
     /// - `deletion_already_scheduled` (409) — удаление организации уже запланировано — показать дату из плана
     /// - `deletion_purging` (409) — очистка организации уже идёт — отменить её нельзя
     /// - `workspace_deleting` (409) — админка: организация удаляется по просьбе владельца — блок удаления снимает только отмена удаления
@@ -5839,11 +6590,13 @@ pub struct ErrorDetail {
     /// - `not_per_seat` (409) — этот тариф не считает оплату за место — докупка не нужна, предел мест показан в ответе GET …/seats
     /// - `subscription_ended` (409) — возобновление: период отменённой подписки уже закончился — ничего не списано, оформить тариф заново (повторный PUT — обычное оформление)
     /// - `subscription_busy` (409) — подписка уже меняется другим запросом (отмена или возобновление) — обновить экран через несколько секунд
+    /// - `subscription_unpaid_debt` (409) — оформление или смена тарифа: есть неоплаченный счёт (и после отмены) — показать message и сумму amount_tiyn; кнопка «Оплатить» — POST …/billing/payments/{payment_id}/pay-form, payment_id null — к списку счетов
     /// - `subscription_ending` (409) — подписка отменена и закончится в конце периода — места не докупаются и не сокращаются
     /// - `seats_unpaid_debt` (409) — подписка просрочена — сначала оплатить счёт; участники остаются, новых приглашать нельзя
     /// - `idempotency_conflict` (409) — докупка: этот ключ уже использован с другим числом мест — для новой покупки нужен новый ключ
     /// - `seat_quote_changed` (409) — докупка: сумма изменилась (другой день или новая цена), деньги не списаны — показать новую сумму из поля и спросить снова
     /// - `no_paid_seats` (409) — оплаченных мест ещё нет — сокращать нечего
+    /// - `first_seats_below_occupied` (409) — первая покупка мест включает тариф всей организации — мест не меньше required_seats (минимум тарифа или участники с приглашениями, occupied); деньги не списаны
     /// - `seats_below_occupied` (409) — занято больше мест, чем просите оставить — сначала убрать участников или отозвать приглашения
     /// - `not_enterprise` (409) — админка: места по договору есть только у Enterprise — сначала поставить вид
     /// - `per_seat_plan_change` (409) — смена тарифа с оплатой за место не делается сразу: Lago взял бы плату за места дважды. Отменить и оформить новый с конца периода
@@ -5852,6 +6605,11 @@ pub struct ErrorDetail {
     /// - `seats_over_max` (400) — мест больше предела одной организации (team.limits.max_seats) — обратиться в поддержку
     /// - `seats_above_paid` (400) — PUT …/seats только сокращает; новые места — через POST …/seats с оплатой
     /// - `onec_check_running` (429) — проверка связи 1С уже идёт у этой компании, у вас (другая компания) или у двух других компаний организации — дождаться её итога и повторить (Retry-After)
+    /// - `invitation_not_found` (404) — приглашение до входа: такого приглашения нет — проверить ссылку из письма
+    /// - `invitation_expired` (410) — приглашение до входа: срок истёк — попросить новое
+    /// - `invitation_revoked` (410) — приглашение до входа: отозвано — попросить новое
+    /// - `invitation_accepted` (410) — приглашение до входа: уже принято — войти, организация уже в списке
+    /// - `invitation_rejected` (410) — приглашение до входа: отклонено — попросить новое
     /// - `invitation_resend_too_soon` (429) — письмо с приглашением уже отправлено только что — подождать Retry-After секунд
     /// - `seats_exhausted` (429) — свободные места закончились: докупите места или освободите их, отозвав приглашение
     /// - `seat_price_unknown` (503) — цена места сейчас неизвестна (тариф не прочитан или настроен неверно), деньги не списаны — повторить позже
@@ -5864,8 +6622,17 @@ pub struct ErrorDetail {
     /// При code = validation_failed — ошибки по полям, в порядке проверки; у одного поля может быть несколько.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub fields: Option<Vec<FieldError>>,
+    /// При code = free_limit_unavailable. Главная причина отказа в бесплатном лимите: `admin_decision` — решение администратора; `temporary_email` — учётная запись на временной почте; `hidden_email` — скрытая почта Apple; `email_used` — на эту почту лимит уже получен в другой учётной записи; `device_used` — с этого устройства лимит уже получен в другой учётной записи; `network_limit` — при регистрации из этой сети уже было получено несколько лимитов; `company_used` — у компании (БИН) лимит уже используется в другой учётной записи; `other` — причина не уточняется. Готовый текст для человека — message
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub free_blocked_reason: Option<ErrorDetailFreeBlockedReason>,
     /// Готовый текст для человека по-русски: что случилось, что делать и к кому обратиться. Показывать как есть; не разбирать — формулировки меняются.
     pub message: String,
+    /// Тот же срок моментом времени — ISO 8601, UTC: когда запрос можно повторить.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub next_request_at: Option<String>,
+    /// При code = subscription_unpaid_debt — платёж для кнопки «Оплатить» (…/billing/payments/{payment_id}/pay-form); null — вести к списку счетов.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub payment_id: Option<String>,
     /// При code = missing_permission — какого права не хватает: права в компании (company.read, company.manage, company.members.manage, onec.connect, proposals.create, proposals.approve, chat.use, audit.read, automations.manage) или права только ключа API (automations.read, webhooks.manage). Показать «нужно право …» и предложить попросить админа (или выпустить ключ с этим правом).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub permission: Option<String>,
@@ -5875,6 +6642,9 @@ pub struct ErrorDetail {
     /// Когда ограничение снимется само — ISO 8601, UTC. Есть у plan_limit_reached (конец окна тарифа) и у месячных потолков (workspace_cap_reached, company_cap_reached, member_cap_reached, key_cap_reached, platform_cap_reached — 1-е число, 00:00 по Алматы). Показать в местном времени: «Лимит обновится в 14:30». Нет поля — само не пройдёт.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub resets_at: Option<String>,
+    /// При отказе по частоте (429) на адресах экрана входа — через сколько секунд можно повторить (то же число, что в заголовке Retry-After). Показать таймер.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub retry_after_seconds: Option<i64>,
     /// При code = role_above_yours — ключ роли в компании, которую нельзя выдать или снять (например chief_accountant).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub role: Option<String>,
@@ -5903,6 +6673,20 @@ string_enum! {
         Apple = "apple",
         Telegram = "telegram",
         Sso = "sso",
+    }
+}
+
+string_enum! {
+    /// При code = free_limit_unavailable. Главная причина отказа в бесплатном лимите: `admin_decision` — решение администратора; `temporary_email` — учётная запись на временной почте; `hidden_email` — скрытая почта Apple; `email_used` — на эту почту лимит уже получен в другой учётной записи; `device_used` — с этого устройства лимит уже получен в другой учётной записи; `network_limit` — при регистрации из этой сети уже было получено несколько лимитов; `company_used` — у компании (БИН) лимит уже используется в другой учётной записи; `other` — причина не уточняется. Готовый текст для человека — message
+    ErrorDetailFreeBlockedReason {
+        AdminDecision = "admin_decision",
+        TemporaryEmail = "temporary_email",
+        HiddenEmail = "hidden_email",
+        EmailUsed = "email_used",
+        DeviceUsed = "device_used",
+        NetworkLimit = "network_limit",
+        CompanyUsed = "company_used",
+        Other = "other",
     }
 }
 
@@ -6468,6 +7252,10 @@ pub struct GetWorkspacePlatformAuditResponse {
     pub data: Vec<AuditEntry>,
     /// Курсор следующей страницы. Чтобы получить её — тот же запрос (с теми же фильтрами) и `?cursor=<это значение>`. null — страниц больше нет (кнопку «Ещё» спрятать). Курсор непрозрачный: не разбирать и не собирать самому, хранить только до следующего запроса. Пустой data с не-null курсором не бывает.
     pub next_cursor: Option<String>,
+    /// Сколько всего записей под этими фильтрами (курсор не учитывается). Считается не дальше 10 000: если записей больше — здесь 10 000 и total_more = true
+    pub total: i64,
+    /// true — записей больше, чем total: писать «больше 10 000», а не точное число
+    pub total_more: bool,
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
@@ -6620,6 +7408,22 @@ pub struct ListCompanyAutomationsScenariosResponse {
     pub data: Vec<AutomationScenario>,
 }
 
+string_enum! {
+    /// Язык текстов — язык интерфейса кабинета. Не передан — язык ответов ИИ из профиля (`kk` — по-казахски, иначе по-русски)
+    ListCompanyChatSuggestionsLang {
+        Ru = "ru",
+        Kk = "kk",
+    }
+}
+
+string_enum! {
+    /// true — только отправленные на одобрение и ещё не решённые; false — только остальные
+    ListCompanyProposalsApprovalRequested {
+        True = "true",
+        False = "false",
+    }
+}
+
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[non_exhaustive]
 pub struct ListUsageRatesResponse {
@@ -6634,6 +7438,10 @@ pub struct ListWorkspacePlatformRequestsResponse {
     pub data: Vec<PlatformRequest>,
     /// Курсор следующей страницы. Чтобы получить её — тот же запрос (с теми же фильтрами) и `?cursor=<это значение>`. null — страниц больше нет (кнопку «Ещё» спрятать). Курсор непрозрачный: не разбирать и не собирать самому, хранить только до следующего запроса. Пустой data с не-null курсором не бывает.
     pub next_cursor: Option<String>,
+    /// Сколько всего записей под этими фильтрами (курсор не учитывается). Считается не дальше 10 000: если записей больше — здесь 10 000 и total_more = true
+    pub total: i64,
+    /// true — записей больше, чем total: писать «больше 10 000», а не точное число
+    pub total_more: bool,
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
@@ -6832,6 +7640,8 @@ pub struct PayForm {
     pub payment_object: BTreeMap<String, Value>,
     /// Адрес скрипта платёжной формы ePay: подключить его на странице (тег script) перед открытием формы
     pub script_url: String,
+    /// true — тестовый терминал ePay: настоящие деньги не списываются, платят тестовыми картами. Показать на форме пометку «тестовая оплата»
+    pub test_mode: bool,
 }
 
 impl PayForm {
@@ -6841,12 +7651,14 @@ impl PayForm {
         payment_id: impl Into<String>,
         payment_object: BTreeMap<String, Value>,
         script_url: impl Into<String>,
+        test_mode: bool,
     ) -> Self {
         Self {
             amount_tiyn,
             payment_id: payment_id.into(),
             payment_object,
             script_url: script_url.into(),
+            test_mode,
         }
     }
 }
@@ -6936,6 +7748,8 @@ pub struct PlatformAccountPurchaseLimits {
     pub max_tiyn: i64,
     /// Наименьшее пополнение в тиынах (1 ₸ = 100 тиын; показывать значение / 100 ₸)
     pub min_tiyn: i64,
+    /// Сколько уже пополнено сегодня (сутки по Алматы; платежи без итога тоже в счёте) — тот же счёт, что у предела daily_max_tiyn в тиынах (1 ₸ = 100 тиын; показывать значение / 100 ₸)
+    pub today_tiyn: i64,
 }
 
 /// Автопополнение баланса платформы.
@@ -6964,6 +7778,8 @@ pub struct PlatformLedgerEntry {
     pub at: String,
     /// Баланс после движения в тиынах (1 ₸ = 100 тиын; показывать значение / 100 ₸)
     pub balance_after_tiyn: i64,
+    /// Документы пополнения (kind = purchase) из его платежа. null — у остальных видов и у ключа не на все компании. Файл PDF ядро не формирует: чек выпускает касса, ссылка появляется в receipt_url
+    pub documents: Option<PlatformLedgerEntryDocuments>,
     /// id движения (led_…); он же — курсор
     pub id: String,
     /// Вид: `purchase` — пополнение с карты; `usage` — списание за вызов модели; `refund` — возврат на карту (баланс уменьшается); `adjustment` — корректировка поддержкой или возврат удержанной суммы
@@ -6976,6 +7792,30 @@ pub struct PlatformLedgerEntry {
     pub payment_id: Option<String>,
     /// id вызова модели у usage (тот же, что в расходе хода); null — у остальных видов
     pub request_id: Option<String>,
+}
+
+/// Документы пополнения (kind = purchase) из его платежа. null — у остальных видов и у ключа не на все компании. Файл PDF ядро не формирует: чек выпускает касса, ссылка появляется в receipt_url
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+#[non_exhaustive]
+pub struct PlatformLedgerEntryDocuments {
+    /// Номер акта выполненных работ (ACT-…), когда платёж прошёл; null — нет
+    pub act_number: Option<String>,
+    /// Номер счёта на оплату по этому пополнению (TG-…); null — нет
+    pub invoice_number: Option<String>,
+    /// Чек ККМ: not_required — не нужен; pending — выпускается; issued — выпущен (ссылка в receipt_url); failed — не выпустился, мы разбираемся; null — платёж ещё не прошёл
+    pub receipt_status: Option<PlatformLedgerEntryDocumentsReceiptStatus>,
+    /// Ссылка на чек ККМ этого пополнения — «Чек» в истории; null — чек ещё не выпущен или не нужен (см. receipt_status)
+    pub receipt_url: Option<String>,
+}
+
+string_enum! {
+    /// Чек ККМ: not_required — не нужен; pending — выпускается; issued — выпущен (ссылка в receipt_url); failed — не выпустился, мы разбираемся; null — платёж ещё не прошёл
+    PlatformLedgerEntryDocumentsReceiptStatus {
+        NotRequired = "not_required",
+        Pending = "pending",
+        Issued = "issued",
+        Failed = "failed",
+    }
 }
 
 string_enum! {
@@ -7145,6 +7985,8 @@ pub struct PlatformRequest {
     pub client_request_id: Option<String>,
     /// Компания из адреса (co_…); null — адрес не про компанию
     pub company_id: Option<String>,
+    /// Цена запроса в тиынах — сколько списано с баланса платформы за вызовы модели этого запроса (ход ИИ; у хода потоком — когда он закончится). null — запрос модель не вызывал; у запросов до появления этого поля тоже null
+    pub cost_tiyn: Option<i64>,
     /// Сколько шёл ответ, мс. У хода ИИ — до начала потока событий
     pub duration_ms: i64,
     /// id строки журнала (rlg_…)
@@ -7428,6 +8270,65 @@ impl Default for ProposalApproval {
     }
 }
 
+/// «Отправить на одобрение»: человек без права записывать в 1С просит решения у того, у кого право есть. Статус предложения не меняется
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+#[non_exhaustive]
+pub struct ProposalApprovalRequest {
+    /// Тот, кто смотрит, может отправить на одобрение: готовит документы (proposals.create), сам одобрять не вправе, предложение ждёт решения без блокеров и ещё не отправлено
+    pub can_request: bool,
+    /// Куда отправить просьбу: POST …/proposals/{id}/request-approval
+    pub href: String,
+    /// Действующая просьба одобрить; null — не просили или решение уже принято
+    pub requested: Option<ProposalApprovalRequested>,
+}
+
+/// Просьба одобрить
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+pub struct ProposalApprovalRequestBody {
+    /// Пояснение для того, кто одобряет, до 1000 знаков; попадёт в историю предложения и журнал
+    #[serde(default, skip_serializing_if = "Option::is_none", with = "nullable")]
+    pub note: Option<Option<String>>,
+}
+
+/// Итог просьбы одобрить и свежая карточка
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[non_exhaustive]
+pub struct ProposalApprovalRequestResult {
+    /// true — письмо тем, кто одобряет, поставлено в очередь; false — повтор, письмо поставить не удалось или оно придержано: всем одобряющим по этой компании недавно уже писали (настройка notify.approval_request_interval_minutes, по умолчанию 15 минут) — оно уйдёт позже одним письмом. Просьба в любом случае записана и видна в очереди
+    pub notified: bool,
+    /// Всегда true
+    pub ok: bool,
+    pub proposal: ProposalCard,
+    /// true — просьба уже действовала, новой записи и письма нет
+    pub repeated: bool,
+}
+
+impl Default for ProposalApprovalRequestResult {
+    fn default() -> Self {
+        Self {
+            notified: Default::default(),
+            ok: true,
+            proposal: Default::default(),
+            repeated: Default::default(),
+        }
+    }
+}
+
+/// Действующая просьба одобрить
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+#[non_exhaustive]
+pub struct ProposalApprovalRequested {
+    /// Когда, ISO 8601 UTC
+    pub at: String,
+    /// Кто просил: usr_… — человек, key_… — ключ API
+    pub by: String,
+    /// Имя просившего для показа — как actor_name в ленте и журнале: имя человека (by = usr_…) или название ключа API (by = key_…). null — имя не нашлось (аккаунт удалён, ключ другой организации) или ответ собран без имён (карточка в потоке чата, файл выгрузки)
+    pub by_name: Option<String>,
+    /// Пояснение к просьбе, если было
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub note: Option<String>,
+}
+
 /// Полная карточка предложения: шапка, строки, проводки, блокеры, кнопки и история
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[non_exhaustive]
@@ -7437,6 +8338,7 @@ pub struct ProposalCard {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub advance_offset: Option<ProposalAdvanceOffset>,
     pub approval: ProposalApproval,
+    pub approval_request: ProposalApprovalRequest,
     /// Сколько блокеров: больше 0 — одобрить нельзя, нужен ответ человека в чате
     pub blocker_count: i64,
     /// Блокеры — показать красным: пока они есть, одобрить нельзя. Снимает их ответ человека в чате (ИИ пересоберёт предложение)
@@ -7445,7 +8347,7 @@ pub struct ProposalCard {
     pub counterparty: Option<ProposalParty>,
     /// Когда ИИ подготовил предложение, ISO 8601 UTC
     pub created_at: String,
-    /// Разговор чата, в котором ИИ подготовил предложение: «Открыть разговор» — GET …/chat/{dialog_id} (если он ваш). null — не из чата (пачка, автоматизация, MCP)
+    /// Разговор чата, в котором ИИ подготовил предложение: «Открыть разговор» — GET …/chat/{dialog_id} (если он ваш). null — не из разговора человека (пачка из ручки, автоматизация, MCP)
     pub dialog_id: Option<String>,
     /// Номер документа в 1С — есть, когда документ уже записан
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -7469,12 +8371,15 @@ pub struct ProposalCard {
     pub line_count: i64,
     /// Строки товаров и услуг; пусто у платёжек, кассовых ордеров и справочников
     pub lines: Vec<ProposalLine>,
+    pub origin: ProposalOrigin,
     /// Ожидаемые проводки — что получится в учёте после проведения
     pub postings: Vec<ProposalPosting>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub result: Option<ProposalResult>,
     pub source: ProposalSource,
     pub status: ProposalStatus,
+    /// Причина отказа — у статусов rejected (отклонено) и failed (записать не удалось): последняя такая запись history. null — статус другой или причину не записали
+    pub status_reason: Option<ProposalCardStatusReason>,
     /// Статус по-русски для показа (бейдж)
     pub status_title: String,
     /// Текстовое превью документа (для чата и логов). Интерфейс рисует карточку по полям выше
@@ -7487,6 +8392,16 @@ pub struct ProposalCard {
     pub warning_count: i64,
     /// Предупреждения — показать жёлтым; одобрению не мешают
     pub warnings: Vec<String>,
+}
+
+/// Причина отказа — у статусов rejected (отклонено) и failed (записать не удалось): последняя такая запись history. null — статус другой или причину не записали
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+#[non_exhaustive]
+pub struct ProposalCardStatusReason {
+    /// Машинная пометка причины, если есть (например, write_unknown — запись ушла, ответа 1С не было); null — пометки нет
+    pub code: Option<String>,
+    /// Причина словами для показа: что сказал человек при отклонении или почему 1С не записала документ
+    pub message: String,
 }
 
 /// Договор контрагента, по которому идёт документ
@@ -7601,6 +8516,9 @@ pub struct ProposalHistoryEvent {
     pub actor: String,
     /// Когда, ISO 8601 UTC
     pub at: String,
+    /// Машинная пометка шага, если есть: `approval_requested` — просили одобрить (статус при этом не менялся); `write_unknown`, `rejected_write_unknown`, `revert_unknown` — исход записи в 1С неизвестен
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub code: Option<String>,
     /// Пояснение: причина отклонения, комментарий к одобрению, текст ошибки записи
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub note: Option<String>,
@@ -7689,13 +8607,14 @@ string_enum! {
 #[non_exhaustive]
 pub struct ProposalListItem {
     pub approval: ProposalApproval,
+    pub approval_request: ProposalApprovalRequest,
     /// Сколько блокеров: больше 0 — одобрить нельзя, нужен ответ человека в чате
     pub blocker_count: i64,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub counterparty: Option<ProposalParty>,
     /// Когда ИИ подготовил предложение, ISO 8601 UTC
     pub created_at: String,
-    /// Разговор чата, в котором ИИ подготовил предложение: «Открыть разговор» — GET …/chat/{dialog_id} (если он ваш). null — не из чата (пачка, автоматизация, MCP)
+    /// Разговор чата, в котором ИИ подготовил предложение: «Открыть разговор» — GET …/chat/{dialog_id} (если он ваш). null — не из разговора человека (пачка из ручки, автоматизация, MCP)
     pub dialog_id: Option<String>,
     /// Номер документа в 1С — есть, когда документ уже записан
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -7712,7 +8631,10 @@ pub struct ProposalListItem {
     pub level_title: String,
     /// Сколько строк товаров и услуг в документе; 0 у платёжек и справочников
     pub line_count: i64,
+    pub origin: ProposalOrigin,
     pub status: ProposalStatus,
+    /// Причина отказа — у статусов rejected (отклонено) и failed (записать не удалось): последняя такая запись history. null — статус другой или причину не записали
+    pub status_reason: Option<ProposalListItemStatusReason>,
     /// Статус по-русски для показа (бейдж)
     pub status_title: String,
     /// Заголовок строки очереди: вид документа, дата и контрагент
@@ -7723,11 +8645,47 @@ pub struct ProposalListItem {
     pub warning_count: i64,
 }
 
+/// Причина отказа — у статусов rejected (отклонено) и failed (записать не удалось): последняя такая запись history. null — статус другой или причину не записали
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+#[non_exhaustive]
+pub struct ProposalListItemStatusReason {
+    /// Машинная пометка причины, если есть (например, write_unknown — запись ушла, ответа 1С не было); null — пометки нет
+    pub code: Option<String>,
+    /// Причина словами для показа: что сказал человек при отклонении или почему 1С не записала документ
+    pub message: String,
+}
+
+/// Откуда пришло предложение и ссылки на источник — вычисляется из связей предложения
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+#[non_exhaustive]
+pub struct ProposalOrigin {
+    /// Задание пачки (bat_…): сводка — GET …/batch/{batch_id}/summary, список документов — GET …/proposals?batch_id=; null — не из пачки
+    pub batch_id: Option<String>,
+    /// Разговор чата (то же, что dialog_id предложения); null — не из разговора человека
+    pub dialog_id: Option<String>,
+    /// Запуск сценария автоматизации (run_…); null — не автоматизация
+    pub run_id: Option<String>,
+    /// Откуда документ: chat — из разговора с ИИ; statement — из выписки банка (загруженной, разобранной в чате или DirectBank); esf — из входящих ЭСФ; automation — собран запуском сценария автоматизации (что бы он ни разбирал)
+    pub source: ProposalOriginSource,
+}
+
+string_enum! {
+    /// Откуда документ: chat — из разговора с ИИ; statement — из выписки банка (загруженной, разобранной в чате или DirectBank); esf — из входящих ЭСФ; automation — собран запуском сценария автоматизации (что бы он ни разбирал)
+    ProposalOriginSource {
+        Chat = "chat",
+        Statement = "statement",
+        Esf = "esf",
+        Automation = "automation",
+    }
+}
+
 /// Страница очереди предложений, свежие сверху
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[non_exhaustive]
 pub struct ProposalPage {
-    /// Сколько предложений в каждом статусе (ключ — ProposalStatus), без учёта фильтра — для бейджей вкладок; статусов без предложений нет
+    /// Сколько предложений ждёт решения по просьбе («Отправить на одобрение») — в тех же пределах, что counts
+    pub approval_requested_count: i64,
+    /// Сколько предложений в каждом статусе (ключ — ProposalStatus) — для бейджей вкладок; статусов без предложений нет. Считается в пределах source и batch_id (откуда и из какой пачки), остальные фильтры (status, kind, даты, q) на счётчики не влияют
     pub counts: BTreeMap<String, f64>,
     /// Предложения страницы, свежие сверху
     pub data: Vec<ProposalListItem>,
@@ -8305,16 +9263,20 @@ pub struct TaxPeriodRef {
 pub struct UsageRate {
     /// Цена 1 млн токенов чтения из кэша модели в тиынах (1 ₸ = 100 тиын; показывать значение / 100 ₸)
     pub cache_read_per_mtok_tiyn: i64,
-    /// Цена 1 млн токенов записи в кэш модели в тиынах (1 ₸ = 100 тиын; показывать значение / 100 ₸)
+    /// Цена 1 млн токенов записи в кэш модели на 1 час (дороже: так кэшируются правила и инструменты) в тиынах (1 ₸ = 100 тиын; показывать значение / 100 ₸)
+    pub cache_write_1h_per_mtok_tiyn: i64,
+    /// Цена 1 млн токенов записи в кэш модели на 5 минут в тиынах (1 ₸ = 100 тиын; показывать значение / 100 ₸)
     pub cache_write_per_mtok_tiyn: i64,
     /// С какого момента действует цена, ISO 8601 UTC
     pub effective_from: String,
     /// Цена 1 млн входных токенов (вопрос и контекст; токен — кусочек текста) в тиынах (1 ₸ = 100 тиын; показывать значение / 100 ₸)
     pub input_per_mtok_tiyn: i64,
-    /// Модель ИИ (техническое имя)
+    /// Модель ИИ: tungo-1-flash, tungo-1, tungo-1-deep (tungo-search — поиск по нормам, tungo-legacy — прежняя)
     pub model: String,
     /// Цена 1 млн токенов ответа в тиынах (1 ₸ = 100 тиын; показывать значение / 100 ₸)
     pub output_per_mtok_tiyn: i64,
+    /// Название модели для людей
+    pub title: String,
 }
 
 /// Попытка доставить событие на адрес.

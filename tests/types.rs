@@ -52,10 +52,16 @@ fn objects_ignore_unknown_fields_and_require_the_required_ones() {
     let decoded: Company = serde_json::from_value(company.clone()).expect("company");
     assert_eq!(decoded.bin, None);
     assert_eq!(
-        decoded.legal_form.as_str(),
-        "spaceship",
+        decoded.legal_form.as_ref().map(|f| f.as_str()),
+        Some("spaceship"),
         "an unknown enum value is kept"
     );
+    // A company whose legal form is not set yet has a null legal_form.
+    let mut unset = company.clone();
+    unset["legal_form"] = serde_json::Value::Null;
+    let decoded_unset: Company =
+        serde_json::from_value(unset).expect("company without a legal form");
+    assert_eq!(decoded_unset.legal_form, None);
     assert_eq!(decoded.permissions.len(), 2);
     assert_eq!(decoded.permissions[1].as_str(), "teleport.use");
 
@@ -78,7 +84,8 @@ fn objects_ignore_unknown_fields_and_require_the_required_ones() {
 #[test]
 fn numbers_keep_their_precision() {
     let summary: ChatDialogSummary = serde_json::from_value(json!({
-        "id": "d1", "message_count": 3, "running": false, "title": "t", "updated_at": "2026-11-09"
+        "id": "d1", "message_count": 3, "running": false, "title": "t", "title_source": "ai",
+        "updated_at": "2026-11-09"
     }))
     .expect("summary");
     assert_eq!(summary.message_count, 3.0);
@@ -450,13 +457,13 @@ fn debug_output_of_models_hides_credentials() {
     let body = json!({
         "key": "tg_TOPSECRET", "id": "key_1", "name": "CRM", "prefix": "tg_live_ab",
         "status": "active", "workspace_id": "ws_1", "all_companies": false,
-        "company_ids": ["co_1"], "permissions": ["company.read"],
+        "company_ids": ["co_1"], "no_companies": false, "permissions": ["company.read"],
         "created_at": "2026-11-09T15:00:00.000Z", "created_by": "usr_1",
         "expires_at": "2027-02-07T15:00:00.000Z",
     });
     let rolled: ApiKeyRolled = serde_json::from_value(body).expect("decode");
     assert!(!format!("{rolled:?}").contains("TOPSECRET"));
-    assert_eq!(rolled.key, "tg_TOPSECRET");
+    assert_eq!(rolled.key.as_deref(), Some("tg_TOPSECRET"));
 
     let hook = AutomationHookCreate {
         signature_secret: Some(Some("TOPSECRET-TOPSECRET".to_owned())),

@@ -38,7 +38,7 @@ Add the crate and a Tokio runtime to `Cargo.toml`:
 
 ```toml
 [dependencies]
-tungo-sdk = "0.2"
+tungo-sdk = "0.3"
 tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
 ```
 
@@ -423,7 +423,7 @@ The programs shown above are in [`examples/`](examples): `config`, `errors`, `mo
 
 ## API reference
 
-Generated from the Tungo Platform API contract: **13 resources, 82 methods, 22 webhook event types**.
+Generated from the Tungo Platform API contract: **13 resources, 85 methods, 22 webhook event types**.
 
 | Resource | Description | Methods |
 | --- | --- | --- |
@@ -432,8 +432,8 @@ Generated from the Tungo Platform API contract: **13 resources, 82 methods, 22 w
 | `client.platform()` | Platform balance, ledger, usage reports, limits, audit log and model rates | `list_usage_rates` · `get_account` · `get_audit / get_audit_all` · `get_ledger / get_ledger_all` · `list_limits` · `list_requests / list_requests_all` · `get_usage` |
 | `client.api_keys()` | The current API key and its usage statistics | `get_current` · `get_current_usage` · `get_usage` |
 | `client.webhooks()` | Outgoing webhooks of an organisation (Svix): endpoints, event catalogue, deliveries and signature check | `list_endpoints / list_endpoints_all` · `create_endpoint` · `get_endpoint` · `update_endpoint` · `delete_endpoint` · `list_endpoint_attempts / list_endpoint_attempts_all` · `rotate_endpoint_secret` · `test_endpoint` · `list_event_types` · `list_messages / list_messages_all` · `list_message_attempts / list_message_attempts_all` · `resend_message` · `get_usage` |
-| `client.chat()` | Conversations with the AI accountant: questions, streaming chat (SSE), token counting and history | `list / list_all` · `create / create_stream` · `count_tokens` · `get` · `update` · `delete` · `answer / answer_stream` · `list_events` · `stop` |
-| `client.proposals()` | Documents proposed by the AI accountant: review, approval for posting to 1C, and rejection | `list / list_all` · `approve_batch` · `get` · `approve` · `reject` |
+| `client.chat()` | Conversations with the AI accountant: questions, streaming chat (SSE), token counting and history | `list / list_all` · `create / create_stream` · `count_tokens` · `list_mentions` · `list_suggestions` · `get` · `update` · `delete` · `answer / answer_stream` · `list_events` · `stop` |
+| `client.proposals()` | Documents proposed by the AI accountant: review, approval for posting to 1C, and rejection | `list / list_all` · `approve_batch` · `get` · `approve` · `reject` · `request_approval` |
 | `client.feed()` | The company's feed of events and proposals (pages and a live SSE stream) | `get / get_all` · `list_events` |
 | `client.batches()` | Processing batches for bank statements, incoming e-invoices and DirectBank | `list / list_all` · `create_bank_statement` · `create_esf_purchases` · `get` · `list_events` · `stop` · `get_summary` · `list_statements / list_statements_all` · `poll_directbank` |
 | `client.esf()` | Incoming and outgoing electronic invoices (the ESF system) | `get_incoming / get_incoming_all` · `get_outgoing / get_outgoing_all` |
@@ -460,7 +460,7 @@ The same API is available in ten languages. All SDKs are generated from one cont
 
 ## Versioning and support
 
-This library follows [Semantic Versioning](https://semver.org/). While the major version is 0, a minor release may contain breaking changes; they are always listed in the [changelog](https://github.com/TungoAI/tungo-sdk-rust/blob/main/CHANGELOG.md). This README describes version 0.2.0.
+This library follows [Semantic Versioning](https://semver.org/). While the major version is 0, a minor release may contain breaking changes; they are always listed in the [changelog](https://github.com/TungoAI/tungo-sdk-rust/blob/main/CHANGELOG.md). This README describes version 0.3.0.
 
 The code is generated: please report problems and ideas in the [issue tracker](https://github.com/TungoAI/tungo-sdk-rust/issues) rather than opening pull requests against generated files. To report a vulnerability, follow the [security policy](https://github.com/TungoAI/tungo-sdk-rust/blob/main/SECURITY.md).
 

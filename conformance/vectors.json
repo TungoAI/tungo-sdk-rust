@@ -3659,7 +3659,7 @@
         "X-Turn-No": "3",
         "x-request-id": "req_4f9c2a7e1b3d4c5a8e6f7a9b0c1d2e3f"
       },
-      "raw": "id: 1\nevent: text\ndata: {\"type\":\"text\",\"delta\":\"Уточните период.\",\"step\":1}\n\nid: 2\nevent: choice\ndata: {\"type\":\"choice\",\"choice_id\":\"ch_01\",\"questions\":[{\"question\":\"За какой квартал?\",\"header\":\"Период\",\"options\":[{\"label\":\"III квартал\",\"description\":\"Июль — сентябрь\"},{\"label\":\"IV квартал\",\"description\":\"Октябрь — декабрь\"}],\"multi_select\":false}]}\n\nid: 3\nevent: done\ndata: {\"type\":\"done\",\"stop_reason\":\"awaiting_user\",\"choice_id\":\"ch_01\"}\n\n",
+      "raw": "id: 1\nevent: text\ndata: {\"type\":\"text\",\"delta\":\"Уточните период.\",\"step\":1}\n\nid: 2\nevent: choice\ndata: {\"type\":\"choice\",\"choice_id\":\"ch_01\",\"questions\":[{\"question\":\"За какой квартал?\",\"header\":\"Период\",\"options\":[{\"label\":\"III квартал\",\"description\":\"Июль — сентябрь\"},{\"label\":\"IV квартал\",\"description\":\"Октябрь — декабрь\"}],\"multi_select\":false,\"confirm\":false}]}\n\nid: 3\nevent: done\ndata: {\"type\":\"done\",\"stop_reason\":\"awaiting_user\",\"choice_id\":\"ch_01\"}\n\n",
       "expect": {
         "dialog_id": "0b5f6a0e-6a1c-4d55-9a57-2f1d8b9c3e10",
         "turn_no": 3,
@@ -3767,7 +3767,9 @@
           "cache_write_tokens": 0,
           "cost_tiyn": 185
         },
-        "stop_reason": "end_turn"
+        "stop_reason": "end_turn",
+        "followups": [],
+        "next_action": null
       },
       "expect": {
         "dialog_id": "0b5f6a0e-6a1c-4d55-9a57-2f1d8b9c3e10",
@@ -3821,14 +3823,17 @@
                   "description": "Октябрь — декабрь"
                 }
               ],
-              "multi_select": false
+              "multi_select": false,
+              "confirm": false
             }
           ]
         },
         "questions": [],
         "citations": [],
         "errors": [],
-        "stop_reason": "awaiting_user"
+        "stop_reason": "awaiting_user",
+        "followups": [],
+        "next_action": null
       },
       "expect": {
         "dialog_id": "0b5f6a0e-6a1c-4d55-9a57-2f1d8b9c3e10",
@@ -3872,7 +3877,9 @@
             "limit_kind": "day"
           }
         ],
-        "stop_reason": "budget"
+        "stop_reason": "budget",
+        "followups": [],
+        "next_action": null
       },
       "expect": {
         "dialog_id": "0b5f6a0e-6a1c-4d55-9a57-2f1d8b9c3e10",
@@ -3915,7 +3922,9 @@
         "questions": [],
         "citations": [],
         "errors": [],
-        "stop_reason": "end_turn"
+        "stop_reason": "end_turn",
+        "followups": [],
+        "next_action": null
       },
       "expect": {
         "decode_error": true

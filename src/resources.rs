@@ -1394,6 +1394,78 @@ impl ChatListParams {
     }
 }
 
+/// The optional parameters of [`Chat::list_mentions`].
+///
+/// Start from `Default::default()` (or `new()`) and set what you need with the
+/// methods of the same names, or assign the fields. The struct is
+/// `#[non_exhaustive]`: a parameter added by a later version of the API does
+/// not break your code.
+#[derive(Debug, Clone, Default, PartialEq)]
+#[non_exhaustive]
+pub struct ChatListMentionsParams {
+    /// Сколько на каждый вид: 1–20, по умолчанию 8
+    pub limit: Option<i64>,
+    /// Что ищем: часть номера, названия, имени; у контрагента — от 2 знаков (или БИН цифрами). Пусто — свежие предложения и задания
+    pub q: Option<String>,
+    /// Виды через запятую; по умолчанию все. `proposal` — предложение (документ для 1С), id — его номер P-000123; `counterparty` — контрагент из 1С компании, id — его ссылка из поиска; `batch` — задание пачки (разбор выписки, входящие ЭСФ), id — bat_…
+    pub types: Option<String>,
+}
+
+impl ChatListMentionsParams {
+    /// No parameter set: the same as `Default::default()`.
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    /// Sets the `limit` query parameter.
+    #[must_use]
+    pub fn limit(mut self, value: i64) -> Self {
+        self.limit = Some(value);
+        self
+    }
+
+    /// Sets the `q` query parameter.
+    #[must_use]
+    pub fn q(mut self, value: impl Into<String>) -> Self {
+        self.q = Some(value.into());
+        self
+    }
+
+    /// Sets the `types` query parameter.
+    #[must_use]
+    pub fn types(mut self, value: impl Into<String>) -> Self {
+        self.types = Some(value.into());
+        self
+    }
+}
+
+/// The optional parameters of [`Chat::list_suggestions`].
+///
+/// Start from `Default::default()` (or `new()`) and set what you need with the
+/// methods of the same names, or assign the fields. The struct is
+/// `#[non_exhaustive]`: a parameter added by a later version of the API does
+/// not break your code.
+#[derive(Debug, Clone, Default, PartialEq)]
+#[non_exhaustive]
+pub struct ChatListSuggestionsParams {
+    /// Язык текстов — язык интерфейса кабинета. Не передан — язык ответов ИИ из профиля (`kk` — по-казахски, иначе по-русски)
+    pub lang: Option<ListCompanyChatSuggestionsLang>,
+}
+
+impl ChatListSuggestionsParams {
+    /// No parameter set: the same as `Default::default()`.
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    /// Sets the `lang` query parameter.
+    #[must_use]
+    pub fn lang(mut self, value: ListCompanyChatSuggestionsLang) -> Self {
+        self.lang = Some(value);
+        self
+    }
+}
+
 /// The optional parameters of [`Chat::list_events`].
 ///
 /// Start from `Default::default()` (or `new()`) and set what you need with the
@@ -1475,7 +1547,7 @@ impl Chat<'_> {
     ///
     /// `POST /v1/companies/{co}/chat`
     ///
-    /// Агентный цикл над 1С компании. Записи в 1С здесь нет: документы попадают в очередь предложений. Отказы: 402 — ИИ компании не подключён (не оплачено подключение); 409 — идёт предыдущий ход или разговор закрыт (error.code = dialog_closed); 410 — разговор не найден или истёк, начните новый; 429 — кончился лимит тарифа; 503 — сервис модели не настроен. Повтор с тем же Idempotency-Key: ход закончен — его итог JSON (ChatTurnResult, Idempotent-Replayed: true), ход ещё идёт — 409 idempotency_in_progress с error.dialog_id, error.turn_no и error.events_url для переподключения (Last-Event-ID).
+    /// Агентный цикл над 1С компании. Записи в 1С здесь нет: документы попадают в очередь предложений. Отказы: 402 — ИИ компании не подключён (не оплачено подключение); 409 — идёт предыдущий ход или разговор закрыт (error.code = dialog_closed); 410 — разговор не найден или истёк, начните новый; 429 — кончился лимит тарифа (plan_limit_reached) или у человека уже идёт предельное число ходов без доп. использования (parallel_turns_limit, Retry-After; ход не начат); 503 — сервис модели не настроен. Повтор с тем же Idempotency-Key: ход закончен — его итог JSON (ChatTurnResult, Idempotent-Replayed: true), ход ещё идёт — 409 idempotency_in_progress с error.dialog_id, error.turn_no и error.events_url для переподключения (Last-Event-ID).
     ///
     /// Idempotency-Key: повтор с тем же ключом и тем же телом отдаёт прежний ответ (статус и тело) с заголовком Idempotent-Replayed: true и ничего не делает второй раз; тот же ключ с другим адресом или телом — 422 (error.code = idempotency_key_reused); первый запрос с этим ключом ещё идёт — 409 (error.code = idempotency_in_progress). Запоминается только удачный ответ (2xx): после отказа повтор с тем же ключом выполнится заново. Ключ живёт сутки (настройка idempotency.keys), область — организация и тот, кто прислал (ключ API или человек).
     ///
@@ -1497,7 +1569,7 @@ impl Chat<'_> {
     ///
     /// `POST /v1/companies/{co}/chat`
     ///
-    /// Агентный цикл над 1С компании. Записи в 1С здесь нет: документы попадают в очередь предложений. Отказы: 402 — ИИ компании не подключён (не оплачено подключение); 409 — идёт предыдущий ход или разговор закрыт (error.code = dialog_closed); 410 — разговор не найден или истёк, начните новый; 429 — кончился лимит тарифа; 503 — сервис модели не настроен. Повтор с тем же Idempotency-Key: ход закончен — его итог JSON (ChatTurnResult, Idempotent-Replayed: true), ход ещё идёт — 409 idempotency_in_progress с error.dialog_id, error.turn_no и error.events_url для переподключения (Last-Event-ID).
+    /// Агентный цикл над 1С компании. Записи в 1С здесь нет: документы попадают в очередь предложений. Отказы: 402 — ИИ компании не подключён (не оплачено подключение); 409 — идёт предыдущий ход или разговор закрыт (error.code = dialog_closed); 410 — разговор не найден или истёк, начните новый; 429 — кончился лимит тарифа (plan_limit_reached) или у человека уже идёт предельное число ходов без доп. использования (parallel_turns_limit, Retry-After; ход не начат); 503 — сервис модели не настроен. Повтор с тем же Idempotency-Key: ход закончен — его итог JSON (ChatTurnResult, Idempotent-Replayed: true), ход ещё идёт — 409 idempotency_in_progress с error.dialog_id, error.turn_no и error.events_url для переподключения (Last-Event-ID).
     ///
     /// Idempotency-Key: повтор с тем же ключом и тем же телом отдаёт прежний ответ (статус и тело) с заголовком Idempotent-Replayed: true и ничего не делает второй раз; тот же ключ с другим адресом или телом — 422 (error.code = idempotency_key_reused); первый запрос с этим ключом ещё идёт — 409 (error.code = idempotency_in_progress). Запоминается только удачный ответ (2xx): после отказа повтор с тем же ключом выполнится заново. Ключ живёт сутки (настройка idempotency.keys), область — организация и тот, кто прислал (ключ API или человек).
     ///
@@ -1547,6 +1619,48 @@ impl Chat<'_> {
         self.client.execute(request).await
     }
 
+    /// Что можно упомянуть через «@»
+    ///
+    /// `GET /v1/companies/{co}/chat/mentions`
+    ///
+    /// Поиск для списка упоминаний в поле ввода. Находит только то, что человек вправе открыть: предложения и задания — по праву company.read (задания — всех авторов компании; по ключу API — только начатые этим ключом), контрагентов — в 1С этой компании. Модель не вызывается.
+    ///
+    /// Доступ: chat.use.
+    ///
+    /// Доступно по ключу API.
+    ///
+    /// Required permission: `chat.use`.
+    pub async fn list_mentions(
+        self,
+        params: &ChatListMentionsParams,
+    ) -> Result<Response<ChatMentionSearch>> {
+        let mut request = Request::new(Method::GET, "/v1/companies/{co}/chat/mentions");
+        request.query("limit", &params.limit);
+        request.query("q", &params.q);
+        request.query("types", &params.types);
+        self.client.execute(request).await
+    }
+
+    /// Подсказки пустого чата
+    ///
+    /// `GET /v1/companies/{co}/chat/suggestions`
+    ///
+    /// Что спросить в этой компании сейчас: разделы и карточки с готовыми текстами — кабинет рисует их как есть. Содержимое — настройка платформы, меняется без выката. Набор зависит от того, подключена ли 1С, есть ли документы, ждущие решения, от прав человека и от календаря: сезонные карточки появляются в свои недели сами, годы, кварталы и месяцы в текстах подставлены на сегодня по времени Алматы. Модель не вызывается, расхода нет.
+    ///
+    /// Доступ: chat.use.
+    ///
+    /// Доступно по ключу API.
+    ///
+    /// Required permission: `chat.use`.
+    pub async fn list_suggestions(
+        self,
+        params: &ChatListSuggestionsParams,
+    ) -> Result<Response<ChatSuggestions>> {
+        let mut request = Request::new(Method::GET, "/v1/companies/{co}/chat/suggestions");
+        request.query("lang", &params.lang);
+        self.client.execute(request).await
+    }
+
     /// Разговор целиком
     ///
     /// `GET /v1/companies/{co}/chat/{id}`
@@ -1568,7 +1682,7 @@ impl Chat<'_> {
     ///
     /// `PATCH /v1/companies/{co}/chat/{id}`
     ///
-    /// Название видно в списке разговоров и в карточке разговора. Пустая строка — вернуть заголовок по первому вопросу. Пока ход идёт на другом сервере Tungo — 409 turn_in_progress (повторить после ответа); разговор только что изменился — 409 dialog_changed.
+    /// Название видно в списке разговоров и в карточке разговора. Пустая строка — вернуть автоматическое название (от ИИ, а пока его нет — первый вопрос). Пока ход идёт на другом сервере Tungo — 409 turn_in_progress (повторить после ответа); разговор только что изменился — 409 dialog_changed.
     ///
     /// Доступ: chat.use.
     ///
@@ -1607,7 +1721,7 @@ impl Chat<'_> {
     ///
     /// `POST /v1/companies/{co}/chat/{id}/answer`
     ///
-    /// Продолжает ход потоком SSE. Повторный ответ на тот же choice_id — 409 (error.turn — номер хода с ответом; error.code = dismissed — вопрос закрыт без ответа). Отказы: 402 — ИИ компании не подключён (не оплачено подключение); 409 — идёт предыдущий ход или разговор закрыт (error.code = dialog_closed); 410 — разговор не найден или истёк, начните новый; 429 — кончился лимит тарифа; 503 — сервис модели не настроен.
+    /// Продолжает ход потоком SSE. Повторный ответ на тот же choice_id — 409 (error.turn — номер хода с ответом; error.code = dismissed — вопрос закрыт без ответа). Отказы: 402 — ИИ компании не подключён (не оплачено подключение); 409 — идёт предыдущий ход или разговор закрыт (error.code = dialog_closed); 410 — разговор не найден или истёк, начните новый; 429 — кончился лимит тарифа (plan_limit_reached) или у человека уже идёт предельное число ходов без доп. использования (parallel_turns_limit, Retry-After; ход не начат); 503 — сервис модели не настроен.
     ///
     /// Доступ: chat.use.
     ///
@@ -1629,7 +1743,7 @@ impl Chat<'_> {
     ///
     /// `POST /v1/companies/{co}/chat/{id}/answer`
     ///
-    /// Продолжает ход потоком SSE. Повторный ответ на тот же choice_id — 409 (error.turn — номер хода с ответом; error.code = dismissed — вопрос закрыт без ответа). Отказы: 402 — ИИ компании не подключён (не оплачено подключение); 409 — идёт предыдущий ход или разговор закрыт (error.code = dialog_closed); 410 — разговор не найден или истёк, начните новый; 429 — кончился лимит тарифа; 503 — сервис модели не настроен.
+    /// Продолжает ход потоком SSE. Повторный ответ на тот же choice_id — 409 (error.turn — номер хода с ответом; error.code = dismissed — вопрос закрыт без ответа). Отказы: 402 — ИИ компании не подключён (не оплачено подключение); 409 — идёт предыдущий ход или разговор закрыт (error.code = dialog_closed); 410 — разговор не найден или истёк, начните новый; 429 — кончился лимит тарифа (plan_limit_reached) или у человека уже идёт предельное число ходов без доп. использования (parallel_turns_limit, Retry-After; ход не начат); 503 — сервис модели не настроен.
     ///
     /// Доступ: chat.use.
     ///
@@ -1710,6 +1824,10 @@ impl Chat<'_> {
 #[derive(Debug, Clone, Default, PartialEq)]
 #[non_exhaustive]
 pub struct ProposalsListParams {
+    /// true — только отправленные на одобрение и ещё не решённые; false — только остальные
+    pub approval_requested: Option<ListCompanyProposalsApprovalRequested>,
+    /// Только документы одного задания пачки (bat_…) — тот же состав, что в сводке задания и у «Одобрить и отправить в 1С». Не id задания — 400; задания нет — пустой список
+    pub batch_id: Option<String>,
     /// next_cursor из ответа прошлой страницы; без него — первая (самая свежая) страница. Остальные фильтры — те же, что у первой страницы.
     pub cursor: Option<String>,
     /// Созданные не раньше этого дня (ГГГГ-ММ-ДД, день по Алматы)
@@ -1720,8 +1838,10 @@ pub struct ProposalsListParams {
     pub kind: Option<String>,
     /// Сколько на странице: 1–100, по умолчанию 20
     pub limit: Option<i64>,
-    /// Поиск без учёта регистра: номер предложения (P-…), номер документа 1С, контрагент (имя из превью), БИН/ИИН и другие реквизиты документа
+    /// Поиск без учёта регистра: номер предложения (P-…), номер документа 1С, контрагент (имя из превью), БИН/ИИН, сумма (как пишут: «150 000,50» или 150000.5) и другие реквизиты документа
     pub q: Option<String>,
+    /// Только из этих источников (origin.source): один или несколько через запятую (chat, statement, esf, automation). Неизвестный — 400
+    pub source: Option<String>,
     /// Только в этих статусах: один или несколько через запятую (previewed, approved, rejected, committed, posted, verified, mismatch, failed); без него — все. Неизвестный — 400
     pub status: Option<String>,
 }
@@ -1730,6 +1850,20 @@ impl ProposalsListParams {
     /// No parameter set: the same as `Default::default()`.
     pub fn new() -> Self {
         Self::default()
+    }
+
+    /// Sets the `approval_requested` query parameter.
+    #[must_use]
+    pub fn approval_requested(mut self, value: ListCompanyProposalsApprovalRequested) -> Self {
+        self.approval_requested = Some(value);
+        self
+    }
+
+    /// Sets the `batch_id` query parameter.
+    #[must_use]
+    pub fn batch_id(mut self, value: impl Into<String>) -> Self {
+        self.batch_id = Some(value.into());
+        self
     }
 
     /// Sets the `cursor` query parameter.
@@ -1771,6 +1905,13 @@ impl ProposalsListParams {
     #[must_use]
     pub fn q(mut self, value: impl Into<String>) -> Self {
         self.q = Some(value.into());
+        self
+    }
+
+    /// Sets the `source` query parameter.
+    #[must_use]
+    pub fn source(mut self, value: impl Into<String>) -> Self {
+        self.source = Some(value.into());
         self
     }
 
@@ -1827,12 +1968,15 @@ impl Proposals<'_> {
 
     fn list_request(params: &ProposalsListParams) -> Result<Request> {
         let mut request = Request::new(Method::GET, "/v1/companies/{co}/proposals");
+        request.query("approval_requested", &params.approval_requested);
+        request.query("batch_id", &params.batch_id);
         request.query("cursor", &params.cursor);
         request.query("date_from", &params.date_from);
         request.query("date_to", &params.date_to);
         request.query("kind", &params.kind);
         request.query("limit", &params.limit);
         request.query("q", &params.q);
+        request.query("source", &params.source);
         request.query("status", &params.status);
         Ok(request)
     }
@@ -1931,6 +2075,33 @@ impl Proposals<'_> {
         let mut request = Request::new(Method::POST, "/v1/companies/{co}/proposals/{id}/reject");
         request.path_param("id", id)?;
         request.json(body)?;
+        self.client.execute(request).await
+    }
+
+    /// Отправить на одобрение
+    ///
+    /// `POST /v1/companies/{co}/proposals/{id}/request-approval`
+    ///
+    /// Человек, который готовит документы, но не вправе записывать их в 1С, просит решения у тех, у кого право proposals.approve: им уходит письмо «документы ждут решения», просьба видна в карточке и списке (approval_request, фильтр approval_requested). Статус предложения не меняется; одобряют и отклоняют обычными POST …/approve и …/reject. Повтор, пока просьба действует, — repeated: true без второго письма. Письма одному получателю по одной компании уходят не чаще раза в 15 минут (настройка платформы): просьба записывается всегда, придержанное письмо — notified: false. Отказы: 409 error.code = approval_not_needed (у вас самого есть право одобрять) и wrong_status (решение уже принято, нынешний статус — error.status); 422 has_blockers (есть блокеры — одобрить нельзя, список — error.blockers). Чужая компания и неизвестное предложение — 404, участник без права — 403.
+    ///
+    /// Доступ: proposals.create.
+    ///
+    /// Доступно по ключу API.
+    ///
+    /// Required permission: `proposals.create`.
+    pub async fn request_approval(
+        self,
+        id: &str,
+        body: Option<&ProposalApprovalRequestBody>,
+    ) -> Result<Response<ProposalApprovalRequestResult>> {
+        let mut request = Request::new(
+            Method::POST,
+            "/v1/companies/{co}/proposals/{id}/request-approval",
+        );
+        request.path_param("id", id)?;
+        if let Some(body) = body {
+            request.json(body)?;
+        }
         self.client.execute(request).await
     }
 }
@@ -2334,7 +2505,7 @@ impl Batches<'_> {
     ///
     /// `GET /v1/companies/{co}/batch/{id}/summary`
     ///
-    /// Считает ровно те предложения, которые уйдут в 1С по POST …/proposals/approve-batch {batch_id}.
+    /// Считает ровно те предложения, которые уйдут в 1С по POST …/proposals/approve-batch {batch_id}. Сводку видит любой участник компании с правом company.read — не только автор задания (как и сами предложения); по ключу API — только задание, начатое этим ключом (чужое — 404). Поток задания и остановка — по-прежнему только автору.
     ///
     /// Доступ: company.read.
     ///
