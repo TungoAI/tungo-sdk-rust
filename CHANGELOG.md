@@ -37,6 +37,7 @@ Generated from the platform contract of backend main cf931af. It contains breaki
 
 - An `Idempotency-Key` is sent only to operations that declare it; approving a proposal uses the `idempotency_key` of the body as the header instead of generating one.
 - A chat turn replayed by `Idempotency-Key`, including a stream call retried after a 502, arrives as its events; Python typed streams expose `last_event_id` for resuming.
+- A replayed chat turn keeps its follow-ups and next action: when the stored result has `followups` or a `next_action`, the rebuilt stream yields the `next` event right before `done`, as a live turn does.
 - An `error` event of the feed stream ends the stream with a typed error; Kotlin delivers the event that the end of a stream completes.
 - Incoming hooks: the event id is the default `Idempotency-Key` (a caller's own header wins), and the signature goes into the hook's own `signature_header`.
 - Webhook verification treats an infinite tolerance as `invalid_tolerance`.
@@ -50,6 +51,10 @@ Generated from the platform contract of backend main cf931af. It contains breaki
 - Ruby: the percent-encoded credentials of an explicit proxy are decoded.
 - Swift: the `URLSession` of the SDK has no URL cache.
 - .NET: a custom platform handler that follows redirects, or whose redirect setting cannot be read, is refused.
+
+### Known limitations
+
+- Batch and proposal export downloads (xlsx, csv, pdf: `GET /v1/companies/{co}/batch/{id}/export` and `GET /v1/companies/{co}/proposals/{id}/export`) are not in this release: the SDKs cannot return a file body yet.
 
 ## [0.2.0] - 2026-11-12
 
