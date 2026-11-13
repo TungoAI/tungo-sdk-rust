@@ -338,8 +338,9 @@ impl ApiError {
         error
     }
 
-    /// Builds the error for an `error` event of a stream
-    /// (`{type: "error", error: {...}, request_id}`).
+    /// Builds the error for an `error` event of a stream: the envelope form
+    /// of chat streams (`{type: "error", error: {...}, request_id}`) or the
+    /// flat form of the feed (`{error: "feed_failed", message}`).
     pub(crate) fn from_event(status: u16, headers: &HeaderMap, event: &Value) -> Self {
         let mut error = ApiError {
             kind: ApiErrorKind::Api,
@@ -360,8 +361,25 @@ impl ApiError {
             .and_then(Value::as_str)
             .filter(|id| !id.is_empty())
             .map(str::to_owned);
-        if let Some(Value::Object(detail)) = event.get("error") {
-            error.apply_detail(detail.clone(), request_id);
+        match event.get("error") {
+            Some(Value::Object(detail)) => error.apply_detail(detail.clone(), request_id),
+            Some(Value::String(code)) => {
+                error.code = Some(code.clone());
+                if let Some(message) = event.get("message").and_then(Value::as_str) {
+                    error.message = message.to_owned();
+                }
+                if request_id.is_some() {
+                    error.request_id = request_id;
+                }
+                if let Value::Object(props) = event {
+                    for (key, value) in props {
+                        if !matches!(key.as_str(), "error" | "message" | "request_id") {
+                            error.extra.insert(key.clone(), value.clone());
+                        }
+                    }
+                }
+            }
+            _ => {}
         }
         error
     }

@@ -6,6 +6,7 @@ mod common;
 use std::time::{Duration, Instant};
 
 use common::{Mock, Reply};
+use tungo_sdk::resources::FeedListEventsParams;
 use tungo_sdk::types::{ChatEvent, ChatMessageRequest};
 use tungo_sdk::{ApiErrorKind, ChatAccumulator, Error, RequestOptions, StreamExt};
 
@@ -265,6 +266,43 @@ async fn an_error_event_inside_the_stream_is_reported() {
         Some("day")
     );
     assert_eq!(error.status(), Some(200));
+}
+
+#[tokio::test]
+async fn a_feed_error_event_ends_the_stream_with_its_code() {
+    // The contract: a feed failure is `event: error` with
+    // {error: "feed_failed", message}, then the end of the stream; reconnect.
+    const ITEM: &str = "event: feed\ndata: {\"id\":\"f1\",\"cursor\":\"c1\",\"section\":\"auto\",\
+        \"section_title\":\"s\",\"at\":\"2026-11-09T10:00:00Z\",\"title\":\"t\",\"actions\":[]}\n\n";
+    const FAILURE: &str =
+        "event: error\ndata: {\"error\":\"feed_failed\",\"message\":\"Лента недоступна\"}\n\n";
+    let mock = Mock::start(|_, _| {
+        Reply::sse(1, &[ITEM, FAILURE, ITEM]).with_header("x-request-id", "req_feed")
+    })
+    .await;
+    let client = mock.client();
+    let mut stream = client
+        .feed()
+        .list_events(&FeedListEventsParams::new().once(true))
+        .await
+        .expect("stream");
+    let first = stream.next().await.expect("an item").expect("decoded");
+    assert_eq!(first.id, "f1");
+    let error = stream
+        .next()
+        .await
+        .expect("the error")
+        .expect_err("a stream error");
+    let Error::Stream(api) = &error else {
+        panic!("expected a stream error, got {error:?}");
+    };
+    assert_eq!(api.code.as_deref(), Some("feed_failed"));
+    assert_eq!(api.message, "Лента недоступна");
+    assert_eq!(api.request_id.as_deref(), Some("req_feed"));
+    assert!(
+        stream.next().await.is_none(),
+        "the stream ends after its error"
+    );
 }
 
 #[tokio::test]

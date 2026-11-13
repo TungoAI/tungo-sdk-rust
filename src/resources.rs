@@ -2098,7 +2098,10 @@ impl Feed<'_> {
             request.query("once", "1");
         }
         request.query("section", &params.section);
-        self.client.execute_stream(request).await
+        self.client
+            .execute_stream(request)
+            .await
+            .map(EventStream::error_ends_stream)
     }
 }
 

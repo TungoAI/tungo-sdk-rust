@@ -9,7 +9,7 @@ use std::time::Duration;
 use futures_core::Stream;
 use serde::de::DeserializeOwned;
 
-use crate::error::{Error, Result};
+use crate::error::{ApiError, Error, Result};
 use crate::response::{snippet, ResponseMeta};
 
 /// One dispatched server-sent event.
@@ -284,6 +284,11 @@ impl std::fmt::Debug for RawEventStream {
 pub struct EventStream<T> {
     raw: RawEventStream,
     last_event_id: Option<String>,
+    /// Whether an `error` event is a variant of `T` (chat events) rather
+    /// than a failure of the stream.
+    error_is_event: bool,
+    /// Set once an `error` event ended the stream.
+    failed: bool,
     marker: PhantomData<fn() -> T>,
 }
 
@@ -312,8 +317,19 @@ impl<T> EventStream<T> {
         EventStream {
             raw: RawEventStream { events, meta },
             last_event_id: None,
+            error_is_event: true,
+            failed: false,
             marker: PhantomData,
         }
+    }
+
+    /// Makes an `error` event a failure of the stream instead of an event:
+    /// for streams whose items have no `error` variant (the feed). The event
+    /// is returned once as [`Error::Stream`] with its code and message, and
+    /// the stream ends: it did not finish, so reconnect to resume it.
+    pub(crate) fn error_ends_stream(mut self) -> Self {
+        self.error_is_event = false;
+        self
     }
 
     /// The status and headers of the streaming response.
@@ -341,6 +357,9 @@ impl<T: DeserializeOwned> Stream for EventStream<T> {
 
     fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
         loop {
+            if self.failed {
+                return Poll::Ready(None);
+            }
             let event = match self.raw.events.as_mut().poll_next(cx) {
                 Poll::Pending => return Poll::Pending,
                 Poll::Ready(None) => return Poll::Ready(None),
@@ -349,6 +368,14 @@ impl<T: DeserializeOwned> Stream for EventStream<T> {
             };
             if event.id.is_some() {
                 self.last_event_id.clone_from(&event.id);
+            }
+            if !self.error_is_event && event.event == "error" && !event.data.is_empty() {
+                self.failed = true;
+                let data = serde_json::from_str::<serde_json::Value>(&event.data)
+                    .unwrap_or_else(|_| serde_json::Value::String(event.data.clone()));
+                let meta = &self.raw.meta;
+                let error = ApiError::from_event(meta.status(), meta.headers(), &data);
+                return Poll::Ready(Some(Err(Error::Stream(Box::new(error)))));
             }
             if let Some(item) = decode_event(&event, &self.raw.meta) {
                 return Poll::Ready(Some(item));
