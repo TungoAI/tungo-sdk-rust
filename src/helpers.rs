@@ -297,6 +297,7 @@ pub struct HookPayload {
     body: Vec<u8>,
     content_type: String,
     secret: Option<String>,
+    signature_header: Option<String>,
     event_id: Option<String>,
 }
 
@@ -306,6 +307,7 @@ impl std::fmt::Debug for HookPayload {
             .field("bytes", &self.body.len())
             .field("content_type", &self.content_type)
             .field("secret", &self.secret.as_ref().map(|_| "[redacted]"))
+            .field("signature_header", &self.signature_header)
             .field("event_id", &self.event_id)
             .finish()
     }
@@ -325,15 +327,25 @@ impl HookPayload {
             body: body.into(),
             content_type: content_type.into(),
             secret: None,
+            signature_header: None,
             event_id: None,
         }
     }
 
     /// Signs the payload: the request carries `X-Signature: sha256=<hex>`
-    /// computed over the exact bytes sent.
+    /// computed over the exact bytes sent (or the header set with
+    /// [`HookPayload::signature_header`]).
     #[must_use]
     pub fn secret(mut self, secret: impl Into<String>) -> Self {
         self.secret = Some(secret.into());
+        self
+    }
+
+    /// The header the hook reads its signature from: the `signature_header`
+    /// it was created with. `X-Signature` when not set.
+    #[must_use]
+    pub fn signature_header(mut self, name: impl Into<String>) -> Self {
+        self.signature_header = Some(name.into());
         self
     }
 
@@ -355,10 +367,21 @@ impl HookPayload {
         request.path_param("token", token)?;
         request.auth(Auth::None);
         request.idempotent();
+        let header = self.signature_header.as_deref().unwrap_or("X-Signature");
+        if header.is_empty()
+            || header.len() > 64
+            || !header
+                .bytes()
+                .all(|b| b.is_ascii_alphanumeric() || b == b'-')
+        {
+            return Err(Error::Validation(
+                "the signature header must be 1 to 64 Latin letters, digits or hyphens, like the hook's signature_header".into(),
+            ));
+        }
         if let Some(secret) = &self.secret {
             let signature = hook_signature_header(&self.body, secret)
                 .map_err(|e| Error::Validation(e.to_string()))?;
-            request.header("X-Signature", &signature)?;
+            request.header(header, &signature)?;
         }
         if let Some(event_id) = &self.event_id {
             request.header("X-Event-Id", event_id)?;

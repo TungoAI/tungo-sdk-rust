@@ -543,6 +543,12 @@ impl Tungo {
                     .default_key
                     .clone()
                     .filter(|key| !key.is_empty())
+                    .or_else(|| {
+                        body_idempotency_key(
+                            request.body.as_deref(),
+                            request.content_type.as_deref(),
+                        )
+                    })
                     .unwrap_or_else(|| uuid::Uuid::new_v4().to_string()),
             ),
             None => None,
@@ -910,4 +916,22 @@ async fn deadline<T>(
         Ok(Err(error)) => Err(Error::from_reqwest(error)),
         Err(_) => Err(Error::timeout(what, None)),
     }
+}
+
+/// The `idempotency_key` field of a JSON object body (approving a proposal
+/// documents it as the same as the header), trimmed like the API trims it.
+/// The API prefers the header over the field, so a generated header would make
+/// the caller's own key useless. A key that cannot travel in a header (outside
+/// printable ASCII) is ignored here.
+fn body_idempotency_key(body: Option<&[u8]>, content_type: Option<&str>) -> Option<String> {
+    if content_type != Some("application/json") {
+        return None;
+    }
+    let body = body?;
+    if !body.windows(15).any(|w| w == b"idempotency_key") {
+        return None;
+    }
+    let value: serde_json::Value = serde_json::from_slice(body).ok()?;
+    let key = value.as_object()?.get("idempotency_key")?.as_str()?.trim();
+    (!key.is_empty() && key.bytes().all(|b| (0x20..=0x7e).contains(&b))).then(|| key.to_owned())
 }

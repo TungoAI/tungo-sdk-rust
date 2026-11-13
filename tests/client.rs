@@ -8,8 +8,9 @@ use std::time::{Duration, Instant};
 
 use common::{Mock, Reply};
 use tungo_sdk::types::{
-    ApproveBatchCompanyProposalsResponse, AutomationStateInput, BatchApproveRequest,
-    ChatDialogPatch, ChatMessageRequest, WebhookEndpointCreate, WebhookEndpointPatch,
+    ApproveBatchCompanyProposalsResponse, ApproveRequest, AutomationStateInput,
+    BatchApproveRequest, ChatDialogPatch, ChatMessageRequest, WebhookEndpointCreate,
+    WebhookEndpointPatch,
 };
 use tungo_sdk::{ApiErrorKind, Error, HookPayload, RequestOptions, Tungo};
 
@@ -797,6 +798,42 @@ async fn a_post_without_an_idempotency_key_is_never_repeated() {
 }
 
 #[tokio::test]
+async fn the_idempotency_key_of_an_approval_body_is_the_header() {
+    // The API prefers the header over the documented body field: a generated
+    // header would make a repeat of the same click a new approval.
+    let mock = Mock::always(200, r#"{"message":"ok","ok":true,"repeated":false}"#).await;
+    let client = mock.client();
+    let body = ApproveRequest {
+        idempotency_key: Some(" click-7 ".to_owned()),
+        ..Default::default()
+    };
+    for _ in 0..2 {
+        client
+            .proposals()
+            .approve("P-1", Some(&body))
+            .await
+            .expect("approve");
+        assert_eq!(mock.last().header("idempotency-key"), Some("click-7"));
+    }
+    client
+        .with_options(RequestOptions::new().idempotency_key("own"))
+        .proposals()
+        .approve("P-1", Some(&body))
+        .await
+        .expect("approve");
+    assert_eq!(mock.last().header("idempotency-key"), Some("own"));
+    client
+        .proposals()
+        .approve("P-1", Some(&ApproveRequest::default()))
+        .await
+        .expect("approve");
+    assert_eq!(
+        mock.last().header("idempotency-key").map(str::len),
+        Some(36)
+    );
+}
+
+#[tokio::test]
 async fn an_idempotency_key_in_the_options_is_good_for_one_request() {
     let mock = Mock::start(|request, _| match request.method.as_str() {
         "GET" => Reply::json(200, COMPANY),
@@ -1262,8 +1299,26 @@ async fn hooks_are_posted_without_the_api_key_and_signed() {
     assert_eq!(request.header("idempotency-key"), Some("own"));
     assert_eq!(request.header("x-event-id"), Some("order_1532"));
 
+    // A hook created with its own signature_header reads the signature only from it.
+    let payload = HookPayload::bytes("{}", "application/json")
+        .secret("hksec_test")
+        .signature_header("x-shop-signature");
+    client.send_hook("hk_tok", payload).await.expect("accepted");
+    let request = mock.last();
+    assert_eq!(request.header("x-signature"), None);
+    let signature = request.header("x-shop-signature").expect("signature");
+    assert!(tungo_sdk::webhooks::verify_hook_signature(
+        &request.body,
+        signature,
+        "hksec_test"
+    ));
+    let payload = HookPayload::bytes("{}", "application/json")
+        .secret("hksec_test")
+        .signature_header("bad header");
+    assert!(client.send_hook("hk_tok", payload).await.is_err());
+
     // An empty secret is an error, not an unsigned request.
     let payload = HookPayload::bytes("{}", "application/json").secret("");
     assert!(client.send_hook("hk_tok", payload).await.is_err());
-    assert_eq!(mock.count(), 3);
+    assert_eq!(mock.count(), 4);
 }
