@@ -3795,6 +3795,134 @@
       }
     },
     {
+      "name": "replayed turn with follow-ups and a next action: they become the next event right before done",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json; charset=UTF-8",
+        "Idempotent-Replayed": "true",
+        "x-request-id": "req_4f9c2a7e1b3d4c5a8e6f7a9b0c1d2e3f"
+      },
+      "body": {
+        "dialog_id": "0b5f6a0e-6a1c-4d55-9a57-2f1d8b9c3e10",
+        "turn_no": 6,
+        "answer": "**НДС** — 5 400 ₸.",
+        "proposals": [],
+        "pending_question": null,
+        "questions": [],
+        "citations": [
+          {
+            "source": "НК РК ст. 422",
+            "title": "Ставка НДС"
+          }
+        ],
+        "errors": [],
+        "usage": {
+          "input_tokens": 1200,
+          "output_tokens": 85,
+          "cache_read_tokens": 900,
+          "cache_write_tokens": 0,
+          "cost_tiyn": 185
+        },
+        "stop_reason": "end_turn",
+        "followups": [
+          "Как оформить счёт-фактуру?",
+          "Когда платить НДС?"
+        ],
+        "next_action": {
+          "code": "prepare_document",
+          "params": {
+            "kind": "cash_order_out"
+          },
+          "prompt": "Подготовь расходный кассовый ордер на выдачу под отчёт"
+        }
+      },
+      "expect": {
+        "dialog_id": "0b5f6a0e-6a1c-4d55-9a57-2f1d8b9c3e10",
+        "turn_no": 6,
+        "text": "**НДС** — 5 400 ₸.",
+        "stop_reason": "end_turn",
+        "event_count": 4,
+        "cost_tiyn": 185,
+        "usage": {
+          "input_tokens": 1200,
+          "output_tokens": 85,
+          "cache_read_tokens": 900,
+          "cache_write_tokens": 0
+        },
+        "choice_id": null,
+        "error": null,
+        "event_types": [
+          "text",
+          "citation",
+          "next",
+          "done"
+        ],
+        "next": {
+          "followups": [
+            "Как оформить счёт-фактуру?",
+            "Когда платить НДС?"
+          ],
+          "action": {
+            "code": "prepare_document",
+            "params": {
+              "kind": "cash_order_out"
+            },
+            "prompt": "Подготовь расходный кассовый ордер на выдачу под отчёт"
+          }
+        }
+      }
+    },
+    {
+      "name": "replayed turn with a next action and no follow-ups: next carries followups [] and the action",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json; charset=UTF-8",
+        "Idempotent-Replayed": "true",
+        "x-request-id": "req_4f9c2a7e1b3d4c5a8e6f7a9b0c1d2e3f"
+      },
+      "body": {
+        "dialog_id": "0b5f6a0e-6a1c-4d55-9a57-2f1d8b9c3e10",
+        "turn_no": 7,
+        "answer": "**НДС** — 5 400 ₸.",
+        "proposals": [],
+        "pending_question": null,
+        "questions": [],
+        "citations": [],
+        "errors": [],
+        "stop_reason": "end_turn",
+        "followups": [],
+        "next_action": {
+          "code": "run_check",
+          "params": {},
+          "prompt": "Проверь учёт за октябрь"
+        }
+      },
+      "expect": {
+        "dialog_id": "0b5f6a0e-6a1c-4d55-9a57-2f1d8b9c3e10",
+        "turn_no": 7,
+        "text": "**НДС** — 5 400 ₸.",
+        "stop_reason": "end_turn",
+        "event_count": 3,
+        "cost_tiyn": null,
+        "usage": null,
+        "choice_id": null,
+        "error": null,
+        "event_types": [
+          "text",
+          "next",
+          "done"
+        ],
+        "next": {
+          "followups": [],
+          "action": {
+            "code": "run_check",
+            "params": {},
+            "prompt": "Проверь учёт за октябрь"
+          }
+        }
+      }
+    },
+    {
       "name": "replayed turn that waits for the user: pending_question becomes choice",
       "status": 200,
       "headers": {

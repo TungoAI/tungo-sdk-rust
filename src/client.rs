@@ -786,8 +786,8 @@ fn is_replayed_json(headers: &HeaderMap) -> bool {
 }
 
 /// Turns a replayed `ChatTurnResult` into the event stream of the turn it
-/// stands for: text (the answer), proposal, question, citation, error and
-/// choice events, then done. The dialog id and the turn number, which a
+/// stands for: text (the answer), proposal, question, citation, error,
+/// choice and next events, then done. The dialog id and the turn number, which a
 /// replay carries only in the body, become the `X-Dialog-Id` and `X-Turn-No`
 /// headers when they are missing. `None` when the body is not a chat turn
 /// result.
@@ -881,6 +881,22 @@ fn replay_as_event_stream(
         if let Some(choice_id) = pending.get("choice_id") {
             done.insert("choice_id".to_owned(), choice_id.clone());
         }
+    }
+    // A live turn ends its finished answer with next right before done; the
+    // stored result keeps it as followups and next_action.
+    let followups = result
+        .get("followups")
+        .and_then(Value::as_array)
+        .cloned()
+        .unwrap_or_default();
+    let action = result
+        .get("next_action")
+        .filter(|action| action.is_object());
+    if !followups.is_empty() || action.is_some() {
+        let mut next = Map::new();
+        next.insert("followups".to_owned(), Value::Array(followups));
+        next.insert("action".to_owned(), action.cloned().unwrap_or(Value::Null));
+        push(&mut out, "next", next);
     }
     push(&mut out, "done", done);
     Some(out)

@@ -613,6 +613,18 @@ fn check_chat_turn(label: &str, status: u16, turn: &tungo_sdk::ChatTurn, expect:
             .collect();
         assert_eq!(&seen, types, "{label}");
     }
+    if let Some(expected) = expect.get("next") {
+        let next: Vec<Value> = turn
+            .events
+            .iter()
+            .filter(|event| event.tag() == Some("next"))
+            .map(|event| {
+                let event = serde_json::to_value(event).expect("next");
+                serde_json::json!({ "followups": event["followups"], "action": event["action"] })
+            })
+            .collect();
+        assert_eq!(next, vec![expected.clone()], "{label}");
+    }
     match (&turn.error, &expect["error"]) {
         (None, Value::Null) => {}
         (Some(error), Value::Object(expected)) => {
