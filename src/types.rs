@@ -1141,6 +1141,16 @@ pub struct AuditEntry {
     /// - `team.seats_reduced` — Сокращено число мест с продления
     /// - `admin.workspace.kind_changed` — Администратор платформы сменил вид организации
     /// - `admin.workspace.contract_seats` — Администратор платформы задал места по договору
+    /// - `admin.plan_grant.created` — Платформа выдала организации тариф бесплатно до даты
+    /// - `admin.plan_grant.extended` — Платформа продлила выданный тариф
+    /// - `admin.plan_grant.revoked` — Платформа отозвала выданный тариф досрочно
+    /// - `admin.plan_grant.ended` — Срок выданного тарифа закончился
+    /// - `admin.platform_discount.created` — Платформа дала скидку на расход платформы разработчиков
+    /// - `admin.platform_discount.revoked` — Платформа отозвала скидку на расход платформы разработчиков
+    /// - `admin.subscription.cancelled` — Администратор платформы отменил продление подписки
+    /// - `admin.subscription.resumed` — Администратор платформы вернул продление подписки
+    /// - `admin.money.exported` — Администратор платформы выгрузил список в CSV
+    /// - `admin.payment_search.pd_viewed` — Поддержка открыла реквизиты плательщиков в поиске платежей
     /// - `workspace.sso_provider_created` — SSO: подключён сервер входа
     /// - `workspace.group_created` — Группа создана
     /// - `workspace.group_updated` — Группа изменена
@@ -1204,6 +1214,9 @@ pub struct AuditEntry {
     /// - `account.deletion_scheduled` — Аккаунт помечен к удалению
     /// - `account.deletion_cancelled` — Удаление аккаунта отменено
     /// - `account.deleted` — Аккаунт удалён и обезличен
+    /// - `langfuse.traces_purged` — Трассы ИИ удалены из Langfuse: по сроку хранения, с аккаунтом или после отзыва согласия
+    /// - `admin.dialog.langfuse_dataset` — Ход разговора отправлен в набор Langfuse (платформа)
+    /// - `admin.dialog.langfuse_annotation` — Ход разговора отправлен в очередь разметки Langfuse (платформа)
     /// - `account.email_code_sent` — Запрошен код подтверждения почты (аккаунт Telegram)
     /// - `account.email_bound` — Почта привязана к аккаунту Telegram
     /// - `account.telegram_merged` — Telegram привязан к аккаунту с подтверждённой почтой, аккаунт Telegram закрыт
@@ -1236,6 +1249,7 @@ pub struct AuditEntry {
     /// - `admin.setting.changed` — Настройка платформы изменена
     /// - `admin.logs.purged` — Журнал запросов и итогов ходов ИИ убран вручную (платформа)
     /// - `admin.dialog.pd_viewed` — Поддержка открыла разговор с персональными данными
+    /// - `admin.dialog.rating_comments_viewed` — Поддержка открыла комментарии человека к оценкам разговора
     /// - `admin.dialog.label_set` — Оценка ответа для обучения поставлена или заменена (платформа)
     /// - `admin.dialog.label_removed` — Оценка ответа для обучения удалена (платформа)
     /// - `admin.journal.pd_viewed` — Поддержка открыла журнал ИИ-бухгалтера с персональными данными
@@ -1247,6 +1261,18 @@ pub struct AuditEntry {
     /// - `site.post_deleted` — Черновик статьи блога удалён (платформа)
     /// - `site.legal_published` — Опубликована новая редакция документа сайта (платформа)
     /// - `site.trackers_saved` — Изменены счётчики и коды подтверждения сайта (платформа)
+    /// - `help.section_created` — Центр помощи: раздел заведён (платформа)
+    /// - `help.section_updated` — Центр помощи: раздел изменён (платформа)
+    /// - `help.section_deleted` — Центр помощи: раздел удалён (платформа)
+    /// - `help.article_created` — Центр помощи: статья заведена (платформа)
+    /// - `help.article_updated` — Центр помощи: статья изменена, опубликована или скрыта (платформа)
+    /// - `help.article_deleted` — Центр помощи: статья удалена (платформа)
+    /// - `help.reordered` — Центр помощи: порядок разделов или статей изменён (платформа)
+    /// - `support.ticket_created` — Создано обращение в поддержку
+    /// - `admin.support.replied` — Поддержка ответила на обращение
+    /// - `admin.support.note_added` — Поддержка добавила внутреннюю заметку к обращению
+    /// - `admin.support.ticket_updated` — Поддержка изменила обращение: состояние, категорию, приоритет или исполнителя
+    /// - `admin.support.attachment_viewed` — Поддержка скачала вложение обращения
     /// - `canary.triggered` — Сработала приманка: украденный ключ или почта «сотрудника» (платформа)
     /// - `billing.payment.new` — Платёж: создан
     /// - `billing.payment.pending` — Платёж: отправлен в банк
@@ -1341,6 +1367,16 @@ string_enum! {
     /// - `team.seats_reduced` — Сокращено число мест с продления
     /// - `admin.workspace.kind_changed` — Администратор платформы сменил вид организации
     /// - `admin.workspace.contract_seats` — Администратор платформы задал места по договору
+    /// - `admin.plan_grant.created` — Платформа выдала организации тариф бесплатно до даты
+    /// - `admin.plan_grant.extended` — Платформа продлила выданный тариф
+    /// - `admin.plan_grant.revoked` — Платформа отозвала выданный тариф досрочно
+    /// - `admin.plan_grant.ended` — Срок выданного тарифа закончился
+    /// - `admin.platform_discount.created` — Платформа дала скидку на расход платформы разработчиков
+    /// - `admin.platform_discount.revoked` — Платформа отозвала скидку на расход платформы разработчиков
+    /// - `admin.subscription.cancelled` — Администратор платформы отменил продление подписки
+    /// - `admin.subscription.resumed` — Администратор платформы вернул продление подписки
+    /// - `admin.money.exported` — Администратор платформы выгрузил список в CSV
+    /// - `admin.payment_search.pd_viewed` — Поддержка открыла реквизиты плательщиков в поиске платежей
     /// - `workspace.sso_provider_created` — SSO: подключён сервер входа
     /// - `workspace.group_created` — Группа создана
     /// - `workspace.group_updated` — Группа изменена
@@ -1404,6 +1440,9 @@ string_enum! {
     /// - `account.deletion_scheduled` — Аккаунт помечен к удалению
     /// - `account.deletion_cancelled` — Удаление аккаунта отменено
     /// - `account.deleted` — Аккаунт удалён и обезличен
+    /// - `langfuse.traces_purged` — Трассы ИИ удалены из Langfuse: по сроку хранения, с аккаунтом или после отзыва согласия
+    /// - `admin.dialog.langfuse_dataset` — Ход разговора отправлен в набор Langfuse (платформа)
+    /// - `admin.dialog.langfuse_annotation` — Ход разговора отправлен в очередь разметки Langfuse (платформа)
     /// - `account.email_code_sent` — Запрошен код подтверждения почты (аккаунт Telegram)
     /// - `account.email_bound` — Почта привязана к аккаунту Telegram
     /// - `account.telegram_merged` — Telegram привязан к аккаунту с подтверждённой почтой, аккаунт Telegram закрыт
@@ -1436,6 +1475,7 @@ string_enum! {
     /// - `admin.setting.changed` — Настройка платформы изменена
     /// - `admin.logs.purged` — Журнал запросов и итогов ходов ИИ убран вручную (платформа)
     /// - `admin.dialog.pd_viewed` — Поддержка открыла разговор с персональными данными
+    /// - `admin.dialog.rating_comments_viewed` — Поддержка открыла комментарии человека к оценкам разговора
     /// - `admin.dialog.label_set` — Оценка ответа для обучения поставлена или заменена (платформа)
     /// - `admin.dialog.label_removed` — Оценка ответа для обучения удалена (платформа)
     /// - `admin.journal.pd_viewed` — Поддержка открыла журнал ИИ-бухгалтера с персональными данными
@@ -1447,6 +1487,18 @@ string_enum! {
     /// - `site.post_deleted` — Черновик статьи блога удалён (платформа)
     /// - `site.legal_published` — Опубликована новая редакция документа сайта (платформа)
     /// - `site.trackers_saved` — Изменены счётчики и коды подтверждения сайта (платформа)
+    /// - `help.section_created` — Центр помощи: раздел заведён (платформа)
+    /// - `help.section_updated` — Центр помощи: раздел изменён (платформа)
+    /// - `help.section_deleted` — Центр помощи: раздел удалён (платформа)
+    /// - `help.article_created` — Центр помощи: статья заведена (платформа)
+    /// - `help.article_updated` — Центр помощи: статья изменена, опубликована или скрыта (платформа)
+    /// - `help.article_deleted` — Центр помощи: статья удалена (платформа)
+    /// - `help.reordered` — Центр помощи: порядок разделов или статей изменён (платформа)
+    /// - `support.ticket_created` — Создано обращение в поддержку
+    /// - `admin.support.replied` — Поддержка ответила на обращение
+    /// - `admin.support.note_added` — Поддержка добавила внутреннюю заметку к обращению
+    /// - `admin.support.ticket_updated` — Поддержка изменила обращение: состояние, категорию, приоритет или исполнителя
+    /// - `admin.support.attachment_viewed` — Поддержка скачала вложение обращения
     /// - `canary.triggered` — Сработала приманка: украденный ключ или почта «сотрудника» (платформа)
     /// - `billing.payment.new` — Платёж: создан
     /// - `billing.payment.pending` — Платёж: отправлен в банк
@@ -1514,6 +1566,16 @@ string_enum! {
         TeamSeatsReduced = "team.seats_reduced",
         AdminWorkspaceKindChanged = "admin.workspace.kind_changed",
         AdminWorkspaceContractSeats = "admin.workspace.contract_seats",
+        AdminPlanGrantCreated = "admin.plan_grant.created",
+        AdminPlanGrantExtended = "admin.plan_grant.extended",
+        AdminPlanGrantRevoked = "admin.plan_grant.revoked",
+        AdminPlanGrantEnded = "admin.plan_grant.ended",
+        AdminPlatformDiscountCreated = "admin.platform_discount.created",
+        AdminPlatformDiscountRevoked = "admin.platform_discount.revoked",
+        AdminSubscriptionCancelled = "admin.subscription.cancelled",
+        AdminSubscriptionResumed = "admin.subscription.resumed",
+        AdminMoneyExported = "admin.money.exported",
+        AdminPaymentSearchPdViewed = "admin.payment_search.pd_viewed",
         WorkspaceSsoProviderCreated = "workspace.sso_provider_created",
         WorkspaceGroupCreated = "workspace.group_created",
         WorkspaceGroupUpdated = "workspace.group_updated",
@@ -1577,6 +1639,9 @@ string_enum! {
         AccountDeletionScheduled = "account.deletion_scheduled",
         AccountDeletionCancelled = "account.deletion_cancelled",
         AccountDeleted = "account.deleted",
+        LangfuseTracesPurged = "langfuse.traces_purged",
+        AdminDialogLangfuseDataset = "admin.dialog.langfuse_dataset",
+        AdminDialogLangfuseAnnotation = "admin.dialog.langfuse_annotation",
         AccountEmailCodeSent = "account.email_code_sent",
         AccountEmailBound = "account.email_bound",
         AccountTelegramMerged = "account.telegram_merged",
@@ -1609,6 +1674,7 @@ string_enum! {
         AdminSettingChanged = "admin.setting.changed",
         AdminLogsPurged = "admin.logs.purged",
         AdminDialogPdViewed = "admin.dialog.pd_viewed",
+        AdminDialogRatingCommentsViewed = "admin.dialog.rating_comments_viewed",
         AdminDialogLabelSet = "admin.dialog.label_set",
         AdminDialogLabelRemoved = "admin.dialog.label_removed",
         AdminJournalPdViewed = "admin.journal.pd_viewed",
@@ -1620,6 +1686,18 @@ string_enum! {
         SitePostDeleted = "site.post_deleted",
         SiteLegalPublished = "site.legal_published",
         SiteTrackersSaved = "site.trackers_saved",
+        HelpSectionCreated = "help.section_created",
+        HelpSectionUpdated = "help.section_updated",
+        HelpSectionDeleted = "help.section_deleted",
+        HelpArticleCreated = "help.article_created",
+        HelpArticleUpdated = "help.article_updated",
+        HelpArticleDeleted = "help.article_deleted",
+        HelpReordered = "help.reordered",
+        SupportTicketCreated = "support.ticket_created",
+        AdminSupportReplied = "admin.support.replied",
+        AdminSupportNoteAdded = "admin.support.note_added",
+        AdminSupportTicketUpdated = "admin.support.ticket_updated",
+        AdminSupportAttachmentViewed = "admin.support.attachment_viewed",
         CanaryTriggered = "canary.triggered",
         BillingPaymentNew = "billing.payment.new",
         BillingPaymentPending = "billing.payment.pending",
@@ -4240,12 +4318,16 @@ pub struct ChatAssistantMessage {
     pub next_action: Option<ChatNextAction>,
     /// Номера предложений этого хода — то же, что proposal-блоки, списком
     pub proposal_ids: Vec<String>,
+    /// Оценка этого ответа человеком; null — не оценён
+    pub rating: Option<ChatMessageRating>,
     /// Ответ ИИ
     pub role: String,
     /// done — ход закончился сам; stopped — нажали «Стоп»; error — ошибка, отказ модели или предел шагов
     pub state: ChatAssistantMessageState,
     /// Размышления модели за ход одним текстом; пусто — не было
     pub thinking: String,
+    /// Номер ответа в разговоре (он же X-Turn-No и средняя часть id): по нему ответ оценивают — PUT …/chat/{id}/messages/{turn}/rating
+    pub turn_no: i64,
 }
 
 impl Default for ChatAssistantMessage {
@@ -4258,9 +4340,11 @@ impl Default for ChatAssistantMessage {
             id: Default::default(),
             next_action: Default::default(),
             proposal_ids: Default::default(),
+            rating: Default::default(),
             role: "assistant".to_owned(),
             state: Default::default(),
             thinking: Default::default(),
+            turn_no: Default::default(),
         }
     }
 }
@@ -4353,18 +4437,46 @@ pub struct ChatChoiceQuestion {
     pub question: String,
 }
 
-/// Источник ответа: норма закона, статья базы знаний
+/// Источник ответа: норма закона, статья базы знаний. Список источников — по порядку первой ссылки в тексте ответа, без повторов. В самом тексте ответа списка источников нет: только короткие ссылки по месту («(НК РК, ст. 445, п. 1)»)
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[non_exhaustive]
 pub struct ChatCitation {
-    /// Редакция нормы (на какую дату)
+    /// Номер статьи
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub article: Option<String>,
+    /// Номер главы — у источников без статей
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub chapter: Option<String>,
+    /// Документ коротко: принятое сокращение, если оно есть в базе («НК РК»), иначе название обычным регистром («Социальный кодекс Республики Казахстан»)
+    pub document: String,
+    /// Редакция нормы словами
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub edition: Option<String>,
-    /// Откуда: код нормы или статьи базы знаний
+    /// Дата начала редакции, ГГГГ-ММ-ДД
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub edition_date: Option<String>,
+    /// Заголовок статьи без «Статья N.» — вторая строка чипа или подсказка
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub heading: Option<String>,
+    /// Короткая подпись для чипа: документ и место в нём, без редакции и пометок
+    pub label: String,
+    /// Как источник назван в тексте ответа — дословные куски текста («ст. 445», «статьи 445»): их можно сделать ссылкой на этот источник. Только в итоге хода и в истории, в событии потока поля нет. Поля нет и тогда, когда статья с этим номером есть среди источников ответа у двух разных документов: по номеру их не различить
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub mentions: Option<Vec<String>>,
+    /// Пометка о статусе или природе источника — показывать обязательно: «УТРАТИЛА СИЛУ с 01.01.2026», «по разъяснению КГД», «позиция органа (не норма права)»
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub note: Option<String>,
+    /// Номер пункта
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub point: Option<String>,
+    /// Подпись целиком, как раньше: документ, место, редакция и пометки одной строкой. Для показа удобнее label, edition и note по отдельности
     pub source: String,
-    /// Название источника для показа
+    /// Номер подпункта
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub subpoint: Option<String>,
+    /// Заголовок статьи целиком, с «Статья N.» (как раньше). Без номера — heading
     pub title: String,
-    /// Ссылка на текст источника, если есть
+    /// Ссылка на текст источника: по ней источник открывают. Она же — ключ источника внутри ответа
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub url: Option<String>,
 }
@@ -4390,6 +4502,10 @@ pub struct ChatDialog {
     pub messages: Vec<ChatMessage>,
     /// false — персональные данные не раскрыты (сменился ключ шифрования): вместо БИН, имён и счетов в тексте метки вида «\[ПД-БИН-1\]». Показать предупреждение
     pub pd_restored: bool,
+    /// Оценка разговора человеком; null — не оценён
+    pub rating: Option<ChatDialogRating>,
+    /// true — пора предложить человеку оценить разговор (форма 1–5 с комментарием). Решает ядро по настройке: достаточно ответов ИИ в разговоре, разговор не оценён, человек не нажимал «не сейчас», и ему не предлагали в последние дни. Пока человек не ответил, предложение остаётся в этом же разговоре и не появляется в других. Ответ — PUT …/chat/{id}/rating, отказ — POST …/chat/{id}/rating/dismiss. По ключу API всегда false
+    pub rating_prompt: bool,
     /// true — идёт ход: дочитать его потоком GET …/chat/{id}/events?turn=\<turn\>
     pub running: bool,
     /// Название одной строкой: человека, иначе от ИИ, иначе первый вопрос. Откуда оно — title_source
@@ -4461,6 +4577,59 @@ impl ChatDialogPatch {
     pub fn new(title: impl Into<String>) -> Self {
         Self {
             title: title.into(),
+        }
+    }
+}
+
+/// Оценка разговора после изменения
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[non_exhaustive]
+pub struct ChatDialogRated {
+    /// id разговора (обычно UUID): по нему продолжают разговор (dialog_id), открывают его GET …/chat/{id} и стирают
+    pub id: String,
+    pub rating: ChatDialogRating,
+    /// Всегда false: предлагать больше не нужно
+    pub rating_prompt: bool,
+}
+
+impl Default for ChatDialogRated {
+    fn default() -> Self {
+        Self {
+            id: Default::default(),
+            rating: Default::default(),
+            rating_prompt: false,
+        }
+    }
+}
+
+/// Оценка разговора человеком
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+#[non_exhaustive]
+pub struct ChatDialogRating {
+    /// Когда оценка поставлена или изменена, ISO 8601 UTC
+    pub at: String,
+    /// Комментарий человека; null — без комментария
+    pub comment: Option<String>,
+    /// Оценка разговора: от 1 (плохо) до 5 (отлично)
+    pub score: i64,
+}
+
+/// Оценка разговора
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+pub struct ChatDialogRatingBody {
+    /// Комментарий человека, необязательный; предел длины — comment_chars из GET …/chat/rating-options
+    #[serde(default, skip_serializing_if = "Option::is_none", with = "nullable")]
+    pub comment: Option<Option<String>>,
+    /// Оценка разговора: от 1 (плохо) до 5 (отлично). Повторная оценка заменяет прежнюю
+    pub score: i64,
+}
+
+impl ChatDialogRatingBody {
+    /// Creates the model from its required fields; every optional field is unset.
+    pub fn new(score: i64) -> Self {
+        Self {
+            comment: None,
+            score,
         }
     }
 }
@@ -4617,21 +4786,46 @@ impl Default for ChatEventChoice {
     }
 }
 
-/// Источник ответа: норма закона, статья базы знаний
+/// Источник ответа: норма закона, статья базы знаний. Приходят по порядку первой ссылки в тексте, каждый источник один раз за ход. Вопросы-продолжения — отдельное событие next
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[non_exhaustive]
 pub struct ChatEventCitation {
-    /// Редакция нормы
+    /// Номер статьи
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub article: Option<String>,
+    /// Номер главы — у источников без статей
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub chapter: Option<String>,
+    /// Документ коротко: принятое сокращение, если оно есть в базе («НК РК»), иначе название обычным регистром («Социальный кодекс Республики Казахстан»)
+    pub document: String,
+    /// Редакция нормы словами
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub edition: Option<String>,
-    /// Откуда: код нормы или статьи базы знаний
+    /// Дата начала редакции, ГГГГ-ММ-ДД
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub edition_date: Option<String>,
+    /// Заголовок статьи без «Статья N.» — вторая строка чипа или подсказка
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub heading: Option<String>,
+    /// Короткая подпись для чипа: документ и место в нём, без редакции и пометок
+    pub label: String,
+    /// Пометка о статусе или природе источника — показывать обязательно: «УТРАТИЛА СИЛУ с 01.01.2026», «по разъяснению КГД», «позиция органа (не норма права)»
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub note: Option<String>,
+    /// Номер пункта
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub point: Option<String>,
+    /// Подпись целиком, как раньше: документ, место, редакция и пометки одной строкой. Для показа удобнее label, edition и note по отдельности
     pub source: String,
-    /// Название источника
+    /// Номер подпункта
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub subpoint: Option<String>,
+    /// Заголовок статьи целиком, с «Статья N.» (как раньше). Без номера — heading
     pub title: String,
     /// Вид события: citation
     #[serde(rename = "type")]
     pub type_: String,
-    /// Ссылка на текст источника
+    /// Ссылка на текст источника: по ней источник открывают. Она же — ключ источника внутри ответа
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub url: Option<String>,
 }
@@ -4639,8 +4833,17 @@ pub struct ChatEventCitation {
 impl Default for ChatEventCitation {
     fn default() -> Self {
         Self {
+            article: None,
+            chapter: None,
+            document: Default::default(),
             edition: None,
+            edition_date: None,
+            heading: None,
+            label: Default::default(),
+            note: None,
+            point: None,
             source: Default::default(),
+            subpoint: None,
             title: Default::default(),
             type_: "citation".to_owned(),
             url: None,
@@ -4661,6 +4864,9 @@ pub struct ChatEventDone {
     /// Сколько ход стоил, в тиынах (1 ₸ = 100 тиын). Только в потоке для ключа API (платформа разработчиков); кабинету стоимость ответа не отдаётся
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub cost_tiyn: Option<i64>,
+    /// Пора предложить человеку оценить разговор — те же правила, что у rating_prompt в GET …/chat/{id}. Поля нет — не предлагать. Ключу API не приходит
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub rating_prompt: Option<bool>,
     /// Чем кончился ход: end_turn — ответ готов; awaiting_user — ждёт ответа на вопрос choice; budget — кончился лимит; aborted — остановили; refusal — модель отказалась; context_overflow — разговор слишком длинный; max_iterations — предел шагов; elsewhere — ход шёл на другом сервере и закончился, ответ и его итог — в GET …/chat/{id}
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub stop_reason: Option<String>,
@@ -4677,6 +4883,7 @@ impl Default for ChatEventDone {
             answer: None,
             choice_id: None,
             cost_tiyn: None,
+            rating_prompt: None,
             stop_reason: None,
             type_: "done".to_owned(),
             usage: None,
@@ -5296,6 +5503,74 @@ tagged_union! {
     }
 }
 
+/// Оценка ответа после изменения
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+#[non_exhaustive]
+pub struct ChatMessageRated {
+    /// id разговора (обычно UUID): по нему продолжают разговор (dialog_id), открывают его GET …/chat/{id} и стирают
+    pub dialog_id: String,
+    /// id сообщения в истории
+    pub message_id: String,
+    /// Оценка теперь; null — снята
+    pub rating: Option<ChatMessageRating>,
+    /// Номер ответа
+    pub turn_no: i64,
+}
+
+/// Оценка ответа ИИ человеком
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+#[non_exhaustive]
+pub struct ChatMessageRating {
+    /// Когда оценка поставлена или изменена, ISO 8601 UTC
+    pub at: String,
+    /// Комментарий человека; null — без комментария
+    pub comment: Option<String>,
+    /// Причина оценки down — ключ из GET …/chat/rating-options; null — не указана или оценка up
+    pub reason: Option<String>,
+    /// up — палец вверх, down — палец вниз
+    pub vote: ChatMessageRatingVote,
+}
+
+/// Оценка ответа
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+pub struct ChatMessageRatingBody {
+    /// Комментарий человека, необязательный; предел длины — comment_chars из GET …/chat/rating-options
+    #[serde(default, skip_serializing_if = "Option::is_none", with = "nullable")]
+    pub comment: Option<Option<String>>,
+    /// Причина оценки down — ключ из GET …/chat/rating-options; можно прислать позже повторным PUT. У оценки up причины нет
+    #[serde(default, skip_serializing_if = "Option::is_none", with = "nullable")]
+    pub reason: Option<Option<String>>,
+    /// up — ответ хороший, down — плохой. Повторная оценка того же ответа заменяет прежнюю
+    pub vote: ChatMessageRatingBodyVote,
+}
+
+impl ChatMessageRatingBody {
+    /// Creates the model from its required fields; every optional field is unset.
+    pub fn new(vote: ChatMessageRatingBodyVote) -> Self {
+        Self {
+            comment: None,
+            reason: None,
+            vote,
+        }
+    }
+}
+
+string_enum! {
+    /// up — ответ хороший, down — плохой. Повторная оценка того же ответа заменяет прежнюю
+    ChatMessageRatingBodyVote {
+        Up = "up",
+        Down = "down",
+    }
+}
+
+string_enum! {
+    /// up — палец вверх, down — палец вниз
+    ChatMessageRatingVote {
+        Up = "up",
+        Down = "down",
+    }
+}
+
 /// Вопрос ИИ-бухгалтеру
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct ChatMessageRequest {
@@ -5421,6 +5696,56 @@ pub struct ChatQuestion {
     pub proposal_id: Option<String>,
     /// Вопрос ИИ к человеку
     pub text: String,
+}
+
+/// Предложение оценить закрыто
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[non_exhaustive]
+pub struct ChatRatingDismissed {
+    /// id разговора (обычно UUID): по нему продолжают разговор (dialog_id), открывают его GET …/chat/{id} и стирают
+    pub id: String,
+    /// Всегда false
+    pub rating_prompt: bool,
+}
+
+impl Default for ChatRatingDismissed {
+    fn default() -> Self {
+        Self {
+            id: Default::default(),
+            rating_prompt: false,
+        }
+    }
+}
+
+/// Настройки формы оценки
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+#[non_exhaustive]
+pub struct ChatRatingOptions {
+    /// Предел длины комментария в знаках; 0 — поле комментария не показывать
+    pub comment_chars: i64,
+    /// Шкала оценки разговора
+    pub dialog_scores: ChatRatingOptionsDialogScores,
+    /// Причины оценки «вниз», по порядку показа
+    pub reasons: Vec<ChatRatingOptionsReasonItem>,
+}
+
+/// Шкала оценки разговора
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+#[non_exhaustive]
+pub struct ChatRatingOptionsDialogScores {
+    /// Высшая оценка разговора
+    pub max: i64,
+    /// Низшая оценка разговора
+    pub min: i64,
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+#[non_exhaustive]
+pub struct ChatRatingOptionsReasonItem {
+    /// Ключ причины — его слать в reason
+    pub key: String,
+    /// Название для показа
+    pub title: String,
 }
 
 /// Итог «Стоп»
@@ -6387,6 +6712,49 @@ pub struct ErrorDetail {
     /// - `pricing_requires_superadmin` (403) — цены моделей (POST /admin/v1/usage-rates) и тарифы (PUT /admin/v1/plans/{code}, …/full) меняет только суперадминистратор
     /// - `price_change_too_large` (400) — цена модели или тарифа меняется за раз сильнее, чем разрешает настройка billing.price_change (max_factor) — проверить нули или сначала поднять предел
     /// - `price_zero_needs_flag` (400) — цена модели или плата за период тарифа обнуляется — только с явным allow_zero: true
+    /// - `help_article_not_found` (404) — центр помощи: статьи нет или она скрыта
+    /// - `help_section_not_found` (404) — админка, центр помощи: раздела нет
+    /// - `help_slug_taken` (409) — админка, центр помощи: раздел или статья с таким адресом уже есть
+    /// - `help_article_incomplete` (409) — админка, центр помощи: статью нельзя опубликовать — нет одной из языковых версий или в тексте HTML; фразы — в error.blockers
+    /// - `help_section_not_empty` (409) — админка, центр помощи: в разделе есть статьи — удалить нельзя
+    /// - `help_order_invalid` (400) — админка, центр помощи: в списке порядка повтор, несуществующий id или статьи разных разделов
+    /// - `support_ticket_not_found` (404) — поддержка: обращения нет или оно чужое
+    /// - `support_ticket_closed` (409) — поддержка: обращение закрыто — человеку создать новое; сотруднику сначала вернуть в работу
+    /// - `support_ticket_not_resolved` (409) — поддержка: оценить можно только решённое или закрытое обращение
+    /// - `support_ticket_rate` (429) — поддержка: слишком много новых обращений подряд (настройка support.limits) — Retry-After
+    /// - `support_message_rate` (429) — поддержка: слишком много сообщений подряд (настройка support.limits) — Retry-After
+    /// - `support_too_many_open` (409) — поддержка: у человека уже много незакрытых обращений — дописать в существующее
+    /// - `support_empty_message` (400) — поддержка: нет ни текста, ни файла (или пустая тема)
+    /// - `support_unknown_category` (400) — поддержка: такой категории нет в настройке support.categories
+    /// - `support_unknown_company` (400) — поддержка: компания не найдена или у человека нет к ней доступа
+    /// - `support_unknown_dialog` (400) — поддержка: такого своего разговора в этой компании нет (или dialog_id без company_id)
+    /// - `support_no_dialog` (409) — поддержка: к обращению не приложен разговор — согласие давать не на что
+    /// - `support_attachment_rejected` (400) — поддержка: файл не принят — тип, размер или число файлов (текст причины в message)
+    /// - `support_attachments_off` (503) — поддержка: на сервере нет ключа шифрования — файлы к обращениям не принимаются
+    /// - `support_attachment_not_found` (404) — поддержка: файла нет или он больше недоступен
+    /// - `support_assignee_not_admin` (400) — админка, поддержка: исполнителем можно назначить только администратора платформы
+    /// - `money_requires_superadmin` (403) — админка: возврат, корректировка баланса, смена вида организации и мест по договору, выдача тарифа, скидка платформы, возврат отменённой подписки — только суперадминистратор
+    /// - `admin_daily_limit` (403) — админка: суточный предел действий с деньгами на одного суперадминистратора (настройки admin.money_actions, admin.plan_grants, platform.discount) — продолжить завтра или поднять предел
+    /// - `plan_grant_bad_dates` (400) — админка, выдача тарифа: срок должен кончаться в будущем, позже начала и (при продлении) позже прежней даты
+    /// - `plan_grant_too_long` (400) — админка, выдача тарифа: срок за одну выдачу или продление длиннее настройки admin.plan_grants.max_days
+    /// - `plan_grant_plan_unsuitable` (400) — админка, выдача тарифа: выдать можно только платный тариф; Enterprise — по договору
+    /// - `plan_grant_seats_unexpected` (400) — админка, выдача тарифа: места задаются только у тарифа с оплатой за место
+    /// - `plan_grant_seats_required` (400) — админка, выдача тарифа: у тарифа с оплатой за место нужно число мест
+    /// - `plan_grant_seats_too_few` (400) — админка, выдача тарифа: мест меньше минимума тарифа или числа участников
+    /// - `plan_grant_kind_mismatch` (409) — админка, выдача тарифа: тариф для другого вида организации
+    /// - `plan_grant_exists` (409) — админка, выдача тарифа: у организации уже есть неоконченная выдача — продлить её или сначала отозвать
+    /// - `plan_grant_not_better` (409) — админка, выдача тарифа: выдача сейчас не подействовала бы — у организации оплачена подписка на тариф другого вида или не хуже выдаваемого (недельный лимит и места не меньше)
+    /// - `search_criteria_required` (400) — админка, поиск платежа: нет ни одного непустого признака (order_id, payment_id, invoice, date, email) — все платежи поиск не отдаёт
+    /// - `plan_grant_ended` (409) — админка, выдача тарифа: выдача уже закончилась или отозвана
+    /// - `plan_grant_not_found` (404) — админка, выдача тарифа: выдачи с таким id нет
+    /// - `workspace_not_found` (404) — админка, выдача тарифа и скидка платформы: организации с таким id нет
+    /// - `platform_discount_bad_percent` (400) — админка, скидка платформы: процент — целое число от 1
+    /// - `platform_discount_over_cap` (400) — админка, скидка платформы: процент выше потолка настройки platform.discount.max_percent
+    /// - `platform_discount_bad_dates` (400) — админка, скидка платформы: срок должен кончаться в будущем
+    /// - `platform_discount_exists` (409) — админка, скидка платформы: у организации уже есть действующая скидка — сначала отозвать
+    /// - `platform_discount_ended` (409) — админка, скидка платформы: скидка уже закончилась или отозвана
+    /// - `platform_discount_not_found` (404) — админка, скидка платформы: скидки с таким id нет
+    /// - `subscription_not_cancelled` (409) — админка, подписка: отменённой подписки нет — возвращать нечего
     /// - `speech_disabled` (404) — голосовой ввод на сервере не включён — кнопку микрофона спрятать (speech.enabled в GET /v1/me)
     /// - `speech_bad_lang` (400) — голосовой ввод: lang не указан или не из speech.languages
     /// - `speech_too_large` (413) — голосовой ввод: запись больше предела (настройка speech.limits) — записать короче
@@ -6531,6 +6899,21 @@ pub struct ErrorDetail {
     /// - `wrong_status` (409) — предложение уже не в том состоянии (поле status — нынешнее): обновить его
     /// - `wrong_state` (409) — запуск автоматизации уже не в том состоянии (поле state — нынешнее)
     /// - `dialog_closed` (409) — разговор закрыт (поле reason — почему): начать новый
+    /// - `message_not_found` (404) — оценка ответа: ответа с таким номером в разговоре нет (или ход ещё идёт)
+    /// - `dialog_not_ratable` (409) — оценка разговора: в разговоре ещё нет ни одного ответа
+    /// - `rating_comment_too_long` (400) — оценка: комментарий длиннее предела (comment_chars из GET …/chat/rating-options)
+    /// - `rating_reason_unknown` (400) — оценка ответа: такой причины нет в списке GET …/chat/rating-options
+    /// - `rating_reason_not_allowed` (400) — оценка ответа: причина указывается только у оценки down
+    /// - `ratings_unavailable` (503) — оценки сейчас не принимаются — повторить позже
+    /// - `langfuse_off` (409) — админка: Langfuse на сервере не подключён
+    /// - `langfuse_trace_unknown` (409) — админка: ход записан до появления связи с трассой Langfuse
+    /// - `langfuse_content_off` (409) — админка: текст ходов в Langfuse выключен настройкой — в набор отправить нельзя
+    /// - `langfuse_no_consent` (409) — админка: для разговора нет согласия на использование текста — в набор отправить нельзя
+    /// - `langfuse_turn_empty` (409) — админка: у хода нет текста вопроса — в набор отправлять нечего
+    /// - `langfuse_queue_unset` (409) — админка: очередь разметки Langfuse не задана ни настройкой, ни в запросе
+    /// - `langfuse_rejected` (409) — админка: Langfuse отклонил запрос
+    /// - `langfuse_not_found` (404) — админка: Langfuse не нашёл очередь или трассу
+    /// - `langfuse_unavailable` (503) — админка: Langfuse не отвечает — повторить позже
     /// - `approval_not_needed` (409) — отправить на одобрение: у вас самого есть право одобрять — записать документ обычным одобрением
     /// - `dialog_id_taken` (409) — разговор с таким dialog_id уже есть — для нового прислать другой id или не присылать его
     /// - `turn_in_progress` (409) — в разговоре уже идёт ход ИИ (поле turn — его номер): дождаться его конца или остановить
@@ -6550,7 +6933,7 @@ pub struct ErrorDetail {
     /// - `api_keys_limit` (429) — в организации предельное число действующих ключей API — отозвать ненужные
     /// - `webhook_endpoints_limit` (429) — предельное число адресов вебхуков — удалить ненужные
     /// - `enterprise_request_rate` (429) — слишком много заявок на Enterprise от одного человека за окно (настройка enterprise.request_rate): повторить после Retry-After
-    /// - `unknown_workspace` (400) — workspace_id в заявке на Enterprise — не организация этого человека
+    /// - `unknown_workspace` (400) — workspace_id в заявке на Enterprise или в обращении в поддержку — не организация этого человека
     /// - `plan_not_for_team` (400) — оформление Team: тариф бесплатный или не для команды — выбрать тариф вида team из GET /v1/plans
     /// - `plan_not_found` (404) — оформление Team: тарифа с таким кодом нет или он выключен
     /// - `team_checkout_busy` (409) — оформление Team с этим ключом уже выполняется другим запросом — повторить через несколько секунд
@@ -7406,6 +7789,14 @@ pub struct ListCompanyAutomationsRunsResponse {
 pub struct ListCompanyAutomationsScenariosResponse {
     /// Элементы списка — весь список одним ответом, без страниц
     pub data: Vec<AutomationScenario>,
+}
+
+string_enum! {
+    /// Язык названий причин; по умолчанию ru
+    ListCompanyChatRatingOptionsLang {
+        Ru = "ru",
+        Kk = "kk",
+    }
 }
 
 string_enum! {

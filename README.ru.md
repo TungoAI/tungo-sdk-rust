@@ -372,7 +372,7 @@ fn main() -> Result<(), tungo_sdk::MoneyError> {
 
 ## Справочник API
 
-Создано из контракта API платформы Tungo: **ресурсов — 13, методов — 85, типов событий вебхуков — 22**.
+Создано из контракта API платформы Tungo: **ресурсов — 13, методов — 90, типов событий вебхуков — 22**.
 
 | Ресурс | Описание | Методы |
 | --- | --- | --- |
@@ -381,7 +381,7 @@ fn main() -> Result<(), tungo_sdk::MoneyError> {
 | `client.platform()` | Баланс платформы, книга движений, отчёты о расходе, лимиты, аудит и тарифы моделей | `list_usage_rates` · `get_account` · `get_audit / get_audit_all` · `get_ledger / get_ledger_all` · `list_limits` · `list_requests / list_requests_all` · `get_usage` |
 | `client.api_keys()` | Сведения о текущем ключе API и статистика его расхода | `get_current` · `get_current_usage` · `get_usage` |
 | `client.webhooks()` | Исходящие вебхуки организации (Svix): адреса, каталог событий, доставки и проверка подписи | `list_endpoints / list_endpoints_all` · `create_endpoint` · `get_endpoint` · `update_endpoint` · `delete_endpoint` · `list_endpoint_attempts / list_endpoint_attempts_all` · `rotate_endpoint_secret` · `test_endpoint` · `list_event_types` · `list_messages / list_messages_all` · `list_message_attempts / list_message_attempts_all` · `resend_message` · `get_usage` |
-| `client.chat()` | Диалоги с ИИ-бухгалтером: вопросы, потоковый чат (SSE), подсчёт токенов и история | `list / list_all` · `create / create_stream` · `count_tokens` · `list_mentions` · `list_suggestions` · `get` · `update` · `delete` · `answer / answer_stream` · `list_events` · `stop` |
+| `client.chat()` | Диалоги с ИИ-бухгалтером: вопросы, потоковый чат (SSE), подсчёт токенов и история | `list / list_all` · `create / create_stream` · `count_tokens` · `list_mentions` · `get_rating_options` · `list_suggestions` · `get` · `update` · `delete` · `answer / answer_stream` · `list_events` · `rate_message` · `delete_message_rating` · `rate` · `dismiss_rating` · `stop` |
 | `client.proposals()` | Предложения документов ИИ-бухгалтера: просмотр, одобрение записи в 1С и отклонение | `list / list_all` · `approve_batch` · `get` · `approve` · `reject` · `request_approval` |
 | `client.feed()` | Лента событий и предложений компании (страницы и живой поток SSE) | `get / get_all` · `list_events` |
 | `client.batches()` | Пачки обработки банковских выписок, входящих ЭСФ и DirectBank | `list / list_all` · `create_bank_statement` · `create_esf_purchases` · `get` · `list_events` · `stop` · `get_summary` · `list_statements / list_statements_all` · `poll_directbank` |

@@ -17,4 +17,4 @@ pub const CONTRACT_VERSION: &str = "0.1.0";
 
 /// The SHA-256 of the API contract this SDK was generated from.
 pub const CONTRACT_SHA256: &str =
-    "72a34292e20222182e0160e45110fff544e1bd7ef7f8a0705e50b78e055b324d";
+    "13f40c73f118b8ee93c26451973dbb5e1a24e46c5c9649ca335c8a5ea6b65700";

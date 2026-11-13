@@ -3563,7 +3563,7 @@
         "X-Turn-No": "3",
         "x-request-id": "req_4f9c2a7e1b3d4c5a8e6f7a9b0c1d2e3f"
       },
-      "raw": "id: 1\nevent: status\ndata: {\"type\":\"status\",\"text\":\"Думаю…\"}\n\nid: 2\nevent: text\ndata: {\"type\":\"text\",\"delta\":\"Сейчас посмотрю в 1С.\",\"step\":1}\n\nid: 3\nevent: progress\ndata: {\"type\":\"progress\",\"step\":1,\"text\":\"Сейчас посмотрю в 1С.\"}\n\nid: 4\nevent: tool\ndata: {\"type\":\"tool\",\"name\":\"onec_query\",\"status\":\"started\",\"title\":\"Ищу реализацию\"}\n\nevent: ping\ndata: \n\nid: 5\nevent: tool\ndata: {\"type\":\"tool\",\"name\":\"onec_query\",\"status\":\"done\"}\n\nid: 6\nevent: text\ndata: {\"type\":\"text\",\"delta\":\"НДС \",\"step\":2}\n\nid: 7\nevent: text\ndata: {\"type\":\"text\",\"delta\":\"5 400 ₸.\",\"step\":2}\n\nid: 8\nevent: citation\ndata: {\"type\":\"citation\",\"source\":\"НК РК ст. 422\",\"title\":\"Ставка НДС\"}\n\nid: 9\nevent: done\ndata: {\"type\":\"done\",\"stop_reason\":\"end_turn\"}\n\n",
+      "raw": "id: 1\nevent: status\ndata: {\"type\":\"status\",\"text\":\"Думаю…\"}\n\nid: 2\nevent: text\ndata: {\"type\":\"text\",\"delta\":\"Сейчас посмотрю в 1С.\",\"step\":1}\n\nid: 3\nevent: progress\ndata: {\"type\":\"progress\",\"step\":1,\"text\":\"Сейчас посмотрю в 1С.\"}\n\nid: 4\nevent: tool\ndata: {\"type\":\"tool\",\"name\":\"onec_query\",\"status\":\"started\",\"title\":\"Ищу реализацию\"}\n\nevent: ping\ndata: \n\nid: 5\nevent: tool\ndata: {\"type\":\"tool\",\"name\":\"onec_query\",\"status\":\"done\"}\n\nid: 6\nevent: text\ndata: {\"type\":\"text\",\"delta\":\"НДС \",\"step\":2}\n\nid: 7\nevent: text\ndata: {\"type\":\"text\",\"delta\":\"5 400 ₸.\",\"step\":2}\n\nid: 8\nevent: citation\ndata: {\"type\":\"citation\",\"source\":\"НК РК ст. 422\",\"title\":\"Ставка НДС\",\"label\":\"НК РК, ст. 422\",\"document\":\"Налоговый кодекс РК\",\"article\":\"422\"}\n\nid: 9\nevent: done\ndata: {\"type\":\"done\",\"stop_reason\":\"end_turn\"}\n\n",
       "expect": {
         "dialog_id": "0b5f6a0e-6a1c-4d55-9a57-2f1d8b9c3e10",
         "turn_no": 3,
@@ -3596,7 +3596,7 @@
         "X-Turn-No": "3",
         "x-request-id": "req_4f9c2a7e1b3d4c5a8e6f7a9b0c1d2e3f"
       },
-      "raw": "id: 1\nevent: status\ndata: {\"type\":\"status\",\"text\":\"Думаю…\"}\n\nid: 2\nevent: text\ndata: {\"type\":\"text\",\"delta\":\"Сейчас посмотрю в 1С.\",\"step\":1}\n\nid: 3\nevent: progress\ndata: {\"type\":\"progress\",\"step\":1,\"text\":\"Сейчас посмотрю в 1С.\"}\n\nid: 4\nevent: tool\ndata: {\"type\":\"tool\",\"name\":\"onec_query\",\"status\":\"started\",\"title\":\"Ищу реализацию\"}\n\nevent: ping\ndata: \n\nid: 5\nevent: tool\ndata: {\"type\":\"tool\",\"name\":\"onec_query\",\"status\":\"done\"}\n\nid: 6\nevent: text\ndata: {\"type\":\"text\",\"delta\":\"НДС \",\"step\":2}\n\nid: 7\nevent: text\ndata: {\"type\":\"text\",\"delta\":\"5 400 ₸.\",\"step\":2}\n\nid: 8\nevent: citation\ndata: {\"type\":\"citation\",\"source\":\"НК РК ст. 422\",\"title\":\"Ставка НДС\"}\n\nid: 9\nevent: done\ndata: {\"type\":\"done\",\"usage\":{\"input_tokens\":1200,\"output_tokens\":85,\"cache_read_tokens\":900,\"cache_write_tokens\":0},\"cost_tiyn\":420,\"stop_reason\":\"end_turn\",\"answer\":\"**НДС** — 5 400 ₸.\"}\n\n",
+      "raw": "id: 1\nevent: status\ndata: {\"type\":\"status\",\"text\":\"Думаю…\"}\n\nid: 2\nevent: text\ndata: {\"type\":\"text\",\"delta\":\"Сейчас посмотрю в 1С.\",\"step\":1}\n\nid: 3\nevent: progress\ndata: {\"type\":\"progress\",\"step\":1,\"text\":\"Сейчас посмотрю в 1С.\"}\n\nid: 4\nevent: tool\ndata: {\"type\":\"tool\",\"name\":\"onec_query\",\"status\":\"started\",\"title\":\"Ищу реализацию\"}\n\nevent: ping\ndata: \n\nid: 5\nevent: tool\ndata: {\"type\":\"tool\",\"name\":\"onec_query\",\"status\":\"done\"}\n\nid: 6\nevent: text\ndata: {\"type\":\"text\",\"delta\":\"НДС \",\"step\":2}\n\nid: 7\nevent: text\ndata: {\"type\":\"text\",\"delta\":\"5 400 ₸.\",\"step\":2}\n\nid: 8\nevent: citation\ndata: {\"type\":\"citation\",\"source\":\"НК РК ст. 422\",\"title\":\"Ставка НДС\",\"label\":\"НК РК, ст. 422\",\"document\":\"Налоговый кодекс РК\",\"article\":\"422\"}\n\nid: 9\nevent: done\ndata: {\"type\":\"done\",\"usage\":{\"input_tokens\":1200,\"output_tokens\":85,\"cache_read_tokens\":900,\"cache_write_tokens\":0},\"cost_tiyn\":420,\"stop_reason\":\"end_turn\",\"rating_prompt\":true,\"answer\":\"**НДС** — 5 400 ₸.\"}\n\n",
       "expect": {
         "dialog_id": "0b5f6a0e-6a1c-4d55-9a57-2f1d8b9c3e10",
         "turn_no": 3,
@@ -3756,7 +3756,9 @@
         "citations": [
           {
             "source": "НК РК ст. 422",
-            "title": "Ставка НДС"
+            "title": "Ставка НДС",
+            "label": "НК РК, ст. 422",
+            "document": "Налоговый кодекс РК"
           }
         ],
         "errors": [],
@@ -3812,7 +3814,9 @@
         "citations": [
           {
             "source": "НК РК ст. 422",
-            "title": "Ставка НДС"
+            "title": "Ставка НДС",
+            "label": "НК РК, ст. 422",
+            "document": "Налоговый кодекс РК"
           }
         ],
         "errors": [],

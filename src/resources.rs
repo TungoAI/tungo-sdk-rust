@@ -1439,6 +1439,33 @@ impl ChatListMentionsParams {
     }
 }
 
+/// The optional parameters of [`Chat::get_rating_options`].
+///
+/// Start from `Default::default()` (or `new()`) and set what you need with the
+/// methods of the same names, or assign the fields. The struct is
+/// `#[non_exhaustive]`: a parameter added by a later version of the API does
+/// not break your code.
+#[derive(Debug, Clone, Default, PartialEq)]
+#[non_exhaustive]
+pub struct ChatGetRatingOptionsParams {
+    /// Язык названий причин; по умолчанию ru
+    pub lang: Option<ListCompanyChatRatingOptionsLang>,
+}
+
+impl ChatGetRatingOptionsParams {
+    /// No parameter set: the same as `Default::default()`.
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    /// Sets the `lang` query parameter.
+    #[must_use]
+    pub fn lang(mut self, value: ListCompanyChatRatingOptionsLang) -> Self {
+        self.lang = Some(value);
+        self
+    }
+}
+
 /// The optional parameters of [`Chat::list_suggestions`].
 ///
 /// Start from `Default::default()` (or `new()`) and set what you need with the
@@ -1641,6 +1668,26 @@ impl Chat<'_> {
         self.client.execute(request).await
     }
 
+    /// Что нужно форме оценки: причины «вниз» и предел комментария
+    ///
+    /// `GET /v1/companies/{co}/chat/rating-options`
+    ///
+    /// Причины задаёт настройка платформы; названия — на языке lang. Список меняется редко: достаточно прочитать раз за сеанс.
+    ///
+    /// Доступ: chat.use.
+    ///
+    /// Доступно по ключу API.
+    ///
+    /// Required permission: `chat.use`.
+    pub async fn get_rating_options(
+        self,
+        params: &ChatGetRatingOptionsParams,
+    ) -> Result<Response<ChatRatingOptions>> {
+        let mut request = Request::new(Method::GET, "/v1/companies/{co}/chat/rating-options");
+        request.query("lang", &params.lang);
+        self.client.execute(request).await
+    }
+
     /// Подсказки пустого чата
     ///
     /// `GET /v1/companies/{co}/chat/suggestions`
@@ -1795,6 +1842,97 @@ impl Chat<'_> {
         request.path_param("id", id)?;
         request.query("turn", &params.turn);
         self.client.execute_stream(request).await
+    }
+
+    /// Оценить ответ ИИ: палец вверх или вниз
+    ///
+    /// `PUT /v1/companies/{co}/chat/{id}/messages/{turn}/rating`
+    ///
+    /// Один голос на ответ: повторный PUT заменяет оценку (так же дописывают причину и комментарий). Оценить можно только законченный ответ своего разговора; идущий ход и несуществующий номер — 404 message_not_found. Поставленная оценка возвращается в истории (rating у сообщения). Отказы: 400 rating_comment_too_long — комментарий длиннее предела; 400 rating_reason_unknown — такой причины нет в списке; 400 rating_reason_not_allowed — причина у оценки up; 404 — разговор чужой или не найден.
+    ///
+    /// Доступ: chat.use.
+    ///
+    /// Доступно по ключу API.
+    ///
+    /// Required permission: `chat.use`.
+    pub async fn rate_message(
+        self,
+        id: &str,
+        turn: &str,
+        body: &ChatMessageRatingBody,
+    ) -> Result<Response<ChatMessageRated>> {
+        let mut request = Request::new(
+            Method::PUT,
+            "/v1/companies/{co}/chat/{id}/messages/{turn}/rating",
+        );
+        request.path_param("id", id)?;
+        request.path_param("turn", turn)?;
+        request.json(body)?;
+        self.client.execute(request).await
+    }
+
+    /// Снять свою оценку ответа
+    ///
+    /// `DELETE /v1/companies/{co}/chat/{id}/messages/{turn}/rating`
+    ///
+    /// Оценки не было — всё равно 200.
+    ///
+    /// Доступ: chat.use.
+    ///
+    /// Доступно по ключу API.
+    ///
+    /// Required permission: `chat.use`.
+    pub async fn delete_message_rating(
+        self,
+        id: &str,
+        turn: &str,
+    ) -> Result<Response<ChatMessageRated>> {
+        let mut request = Request::new(
+            Method::DELETE,
+            "/v1/companies/{co}/chat/{id}/messages/{turn}/rating",
+        );
+        request.path_param("id", id)?;
+        request.path_param("turn", turn)?;
+        self.client.execute(request).await
+    }
+
+    /// Оценить разговор целиком: от 1 до 5
+    ///
+    /// `PUT /v1/companies/{co}/chat/{id}/rating`
+    ///
+    /// Повторный PUT заменяет оценку. В разговоре без единого ответа — 409 dialog_not_ratable. После оценки предложение оценить (rating_prompt) в этом разговоре больше не приходит. Отказы: 400 rating_comment_too_long — комментарий длиннее предела; 400 rating_reason_unknown — такой причины нет в списке; 400 rating_reason_not_allowed — причина у оценки up; 404 — разговор чужой или не найден.
+    ///
+    /// Доступ: chat.use.
+    ///
+    /// Доступно по ключу API.
+    ///
+    /// Required permission: `chat.use`.
+    pub async fn rate(
+        self,
+        id: &str,
+        body: &ChatDialogRatingBody,
+    ) -> Result<Response<ChatDialogRated>> {
+        let mut request = Request::new(Method::PUT, "/v1/companies/{co}/chat/{id}/rating");
+        request.path_param("id", id)?;
+        request.json(body)?;
+        self.client.execute(request).await
+    }
+
+    /// Не сейчас: закрыть предложение оценить разговор
+    ///
+    /// `POST /v1/companies/{co}/chat/{id}/rating/dismiss`
+    ///
+    /// В этом разговоре предложение больше не появится, в других — не раньше срока из настройки. Уже поставленная оценка остаётся. Тела нет.
+    ///
+    /// Доступ: chat.use.
+    ///
+    /// Доступно по ключу API.
+    ///
+    /// Required permission: `chat.use`.
+    pub async fn dismiss_rating(self, id: &str) -> Result<Response<ChatRatingDismissed>> {
+        let mut request = Request::new(Method::POST, "/v1/companies/{co}/chat/{id}/rating/dismiss");
+        request.path_param("id", id)?;
+        self.client.execute(request).await
     }
 
     /// Остановить ход или закрыть открытый вопрос
