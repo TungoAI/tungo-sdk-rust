@@ -547,6 +547,34 @@ async fn api_errors_are_typed() {
 }
 
 #[tokio::test]
+async fn a_decode_error_never_shows_a_secret_in_debug() {
+    // A 201 that carries the one-time secret but lacks a required field.
+    let mock = Mock::start(|_, _| {
+        Reply::json(
+            201,
+            r#"{"id":"ep_1","secret":"whsec_TOPSECRETVALUE","enabled_events":[]}"#,
+        )
+    })
+    .await;
+    let client = mock.builder().max_retries(0).build().expect("client");
+    let error = client
+        .webhooks()
+        .create_endpoint(&WebhookEndpointCreate::new("https://example.com/hook"))
+        .await
+        .expect_err("a drifted body");
+    let Error::Decode { body, .. } = &error else {
+        panic!("expected a decode error, got {error}");
+    };
+    assert!(
+        body.contains("whsec_TOPSECRETVALUE"),
+        "the body stays readable"
+    );
+    let shown = format!("{error:?} {error:#?} {error}");
+    assert!(!shown.contains("whsec_TOPSECRETVALUE"), "{shown}");
+    assert!(shown.contains("Decode"), "{shown}");
+}
+
+#[tokio::test]
 async fn an_undecodable_success_is_a_decode_error() {
     let mock = Mock::start(|_, index| match index {
         0 => {

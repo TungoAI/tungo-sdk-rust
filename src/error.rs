@@ -20,7 +20,12 @@ pub type Result<T, E = Error> = std::result::Result<T, E>;
 ///
 /// Cancellation has no variant: an operation is cancelled by dropping its
 /// future (for example with `tokio::select!` or `tokio::time::timeout`).
-#[derive(Debug, thiserror::Error)]
+///
+/// The `Debug` output never shows the body kept by [`Error::Decode`]: a
+/// response that fails to decode may still carry a one-time webhook secret or
+/// a hook token, and `{:?}` ends up in logs (`unwrap`, `expect`, `main`
+/// returning the error). The body stays readable in the `body` field.
+#[derive(thiserror::Error)]
 #[non_exhaustive]
 pub enum Error {
     /// The API answered with an HTTP error status.
@@ -93,6 +98,46 @@ pub enum Error {
     /// A money amount could not be converted.
     #[error(transparent)]
     Money(#[from] MoneyError),
+}
+
+impl fmt::Debug for Error {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Error::Api(error) => f.debug_tuple("Api").field(error).finish(),
+            Error::Stream(error) => f.debug_tuple("Stream").field(error).finish(),
+            Error::Connection { message, source } => f
+                .debug_struct("Connection")
+                .field("message", message)
+                .field("source", source)
+                .finish(),
+            Error::Timeout { message, source } => f
+                .debug_struct("Timeout")
+                .field("message", message)
+                .field("source", source)
+                .finish(),
+            Error::Decode {
+                message,
+                status,
+                request_id,
+                body,
+                source,
+            } => f
+                .debug_struct("Decode")
+                .field("message", message)
+                .field("status", status)
+                .field("request_id", request_id)
+                .field("body", &format_args!("[{} bytes, not shown]", body.len()))
+                .field("source", source)
+                .finish(),
+            Error::Config(message) => f.debug_tuple("Config").field(message).finish(),
+            Error::Validation(message) => f.debug_tuple("Validation").field(message).finish(),
+            Error::Pagination(message) => f.debug_tuple("Pagination").field(message).finish(),
+            Error::WebhookVerification(error) => {
+                f.debug_tuple("WebhookVerification").field(error).finish()
+            }
+            Error::Money(error) => f.debug_tuple("Money").field(error).finish(),
+        }
+    }
 }
 
 impl Error {
