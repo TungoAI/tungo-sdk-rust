@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.3.0] - Unreleased
+## [0.3.0] - 2026-11-13
 
 Generated from the platform contract of backend 44066d62. It contains breaking type changes compared with 0.2.0.
 
