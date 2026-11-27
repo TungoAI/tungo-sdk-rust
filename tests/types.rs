@@ -84,7 +84,7 @@ fn objects_ignore_unknown_fields_and_require_the_required_ones() {
 #[test]
 fn numbers_keep_their_precision() {
     let summary: ChatDialogSummary = serde_json::from_value(json!({
-        "id": "d1", "message_count": 3, "running": false, "title": "t", "title_source": "ai",
+        "id": "d1", "memory": true, "message_count": 3, "running": false, "title": "t", "title_source": "ai",
         "updated_at": "2026-11-09"
     }))
     .expect("summary");
@@ -439,7 +439,7 @@ fn money_converts_through_rust_decimal() {
 
 #[test]
 fn debug_output_of_models_hides_credentials() {
-    use tungo_sdk::types::{ApiKeyRolled, AutomationHookCreate, WebhookEndpointCreated};
+    use tungo_sdk::types::{AutomationHookCreate, WebhookEndpointCreated};
 
     let body = json!({
         "id": "ep_1", "secret": "whsec_TOPSECRET", "url": "https://example.com/hook",
@@ -453,17 +453,6 @@ fn debug_output_of_models_hides_credentials() {
     assert!(text.contains("ep_1"), "{text}");
     // The value itself stays readable.
     assert_eq!(created.secret.as_deref(), Some("whsec_TOPSECRET"));
-
-    let body = json!({
-        "key": "tg_TOPSECRET", "id": "key_1", "name": "CRM", "prefix": "tg_live_ab",
-        "status": "active", "workspace_id": "ws_1", "all_companies": false,
-        "company_ids": ["co_1"], "no_companies": false, "permissions": ["company.read"],
-        "created_at": "2026-11-09T15:00:00.000Z", "created_by": "usr_1",
-        "expires_at": "2027-02-07T15:00:00.000Z",
-    });
-    let rolled: ApiKeyRolled = serde_json::from_value(body).expect("decode");
-    assert!(!format!("{rolled:?}").contains("TOPSECRET"));
-    assert_eq!(rolled.key.as_deref(), Some("tg_TOPSECRET"));
 
     let hook = AutomationHookCreate {
         signature_secret: Some(Some("TOPSECRET-TOPSECRET".to_owned())),

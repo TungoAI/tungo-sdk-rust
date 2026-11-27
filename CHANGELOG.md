@@ -9,6 +9,41 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.0] - 2026-11-27
+
+First stable release, generated from the platform contract of backend 230d6b82 (the API in production). From 1.0.0 on, minor and patch releases are backwards compatible: the API and the SDKs grow only by additions, a field or method that is to go away is first marked deprecated and kept for at least six months, and breaking changes come only in a new major version. The breaking changes against 0.3 are listed below, each with what to change; most code that only calls methods and reads results needs no change.
+
+### Breaking
+
+- `ChatAttachment` (the `attachments` of `chat.create`, `chat.answer` and `chat.count_tokens`) is now a union of two shapes: `ChatAttachmentData` (a file in base64: `name`, `data`, optional `media_type`, the 0.3 shape) and `ChatAttachmentUpload` (`upload_id` of an archive uploaded in parts with `chat.create_upload` and `chat.put_upload_part`). The JSON sent for a base64 file is unchanged; only the type used to build it changed (see Migration).
+- `AutomationTriggerHook.hook_id` can be null: the hook of the scenario was deleted, and the scenario is not started by events until it gets another hook (`automations.put_scenario`). The API already answered null in this case; the field is now nullable in every SDK.
+- Models that no SDK method sends or returns are no longer generated: the cabinet's API key management models (`ApiKeyCreate`, `ApiKeyCreated`, `ApiKeyDetails`, `ApiKeyPatch`, `ApiKeyPerson`, `ApiKeyRoll`, `ApiKeyRolled`, `ApiKeyTransfer`, `ApiKeyUpdated`, `ApiKeyWarning` and their enums) and billing models (`CardSession`, `CardSessionState`, `PayForm`, `PaymentMethod`, `PlatformPurchase`, `PlatformPurchaseInput`, `PlatformSettingsInput`, `EpayReturnLinks` and their enums). They describe operations that need a cabinet session, which an API key cannot call; they changed with the cabinet (`CardSession` and `PayForm` gained a redirect form with nullable `script_url` and `payment_object` in this contract) and would have broken the SDKs for nothing. The key in use is described by `api_keys.get_current` (`ApiKey`), as before.
+- New union variants: `ChatEvent` gains `file` (`ChatEventFile`) and `memory` (`ChatEventMemory`); `ChatHistoryBlock` gains `file` (`ChatHistoryFile`) and `memory` (`ChatHistoryMemory`). An exhaustive `switch`/`when`/`match` over these unions needs the new cases (or a default branch).
+- Response models gained required fields: `ChatTurnResult.files`, `ChatAssistantMessage.thinking_parts`, `ChatDialog.memory` and `ChatDialogSummary.memory`, `PlatformAutoReload.monthly_count_max`, the archive limits of `PlatformLimits.files` (`archive_bytes`, `archive_files`, `archives_per_message`, `upload_part_bytes`), `UsageRate.long_context` and `UsageRate.web_search_per_1k_tiyn`. Decoding is unaffected; code that constructs these models itself (test fakes) must pass the new fields.
+
+### Migration
+
+- Attachments: `ChatAttachment { name, data, .. }` becomes `ChatAttachment::ChatAttachmentData(ChatAttachmentData::new(data, name))`. `AutomationTriggerHook::hook_id` is `Option<String>`.
+- `hook_id` of a hook trigger: handle null (no hook) where the scenario's trigger is read.
+- Removed cabinet models: delete the imports; there is nothing to replace them with in an SDK, because their operations need a cabinet session.
+- Exhaustive matches over `ChatEvent` and `ChatHistoryBlock`: add `file` and `memory`, or a default branch. A default branch also keeps code compiling when later minor releases add variants, which they may do.
+
+### Added
+
+- Chat archives: `chat.create_upload` (`POST /v1/companies/{co}/chat/uploads`, `ChatUploadCreate`), `chat.put_upload_part` (`PUT …/chat/uploads/{upload}/parts/{n}`, raw bytes) and `chat.delete_upload` upload a .zip, .rar or .7z in parts (`ChatUpload`, `ChatUploadPart`); the finished upload goes into a question as `ChatAttachmentUpload`. Limits: `PlatformLimits.files.archive_bytes`, `archive_files`, `archives_per_message`, `upload_part_bytes`.
+- Chat files made by the AI (Excel, Word, PDF, CSV): `chat.list_files` (`GET /v1/companies/{co}/chat/files`, `ChatFileList`, `ChatFileItem`), `ChatTurnResult.files` (`ChatTurnFile`), the `file` stream event (`ChatEventFile`) and the `file` history block (`ChatHistoryFile`).
+- Chat memory: `memory` on `ChatMessageRequest` (false: a conversation without memory), `ChatDialog` and `ChatDialogSummary`; the `memory` stream event (`ChatEventMemory`) and history block (`ChatHistoryMemory`).
+- Chat thinking: `chat.translate_thinking` (`POST …/chat/{id}/thinking/{tid}/translate`, `ChatThinkingTranslation`); `ChatEventThinking.original` and `translate_id`; `ChatAssistantMessage.thinking_parts` (`ChatThinkingPart`). `ChatEventStatus` gains `chars` and the codes `checking_norm` and `writing`.
+- Chat: `ChatUserMessage.onec_object` (`ChatOnecObject`), the 1C object a question was asked from.
+- `verification` (public, no API key): `verification.get` (`GET /v1/public/verify/{code}`, `PublicVerification`), `verification.check` (`POST /v1/public/verify/{code}/check`, compares a file's SHA-256 with the signed document, `VerifyCheck`), `verification.verify_qr` (`POST /v1/public/verify/qr`, `VerifyQrResult`) and `verification.list_keys` (`GET /v1/public/verify-keys`, the JWKS of the QR signature, `VerifyKeys`).
+- `releases.list` (public, `GET /v1/public/downloads`, `Downloads`): the current releases of the 1C extension and Tungo Connector to download. (The resource is named `releases`, not `downloads`, so that it never clashes with the `Downloads` model.)
+- Platform: `PlatformAutoReload.monthly_count_max`; `UsageRate.long_context` (`UsageRateLongContext`) and `UsageRate.web_search_per_1k_tiyn`; new audit actions; `OneCGateway` value `module`.
+
+### Known limitations
+
+- Downloads of files (`GET …/chat/{id}/files/{file}`, the batch and proposal exports, and the redirects `GET /v1/public/downloads/connector` and `GET /v1/public/downloads/onec-extension`) are not in this release: the SDKs cannot return a file body yet.
+- A chat turn replayed by `Idempotency-Key` as a stream does not rebuild `file` events; the files of the turn are in `ChatTurnResult.files` of the non-streaming answer and in `chat.list_files`.
+
 ## [0.3.0] - 2026-11-13
 
 Generated from the platform contract of backend 44066d62. It contains breaking type changes compared with 0.2.0.
@@ -81,7 +116,8 @@ First production-ready release. It contains breaking changes compared with 0.1.0
 
 Initial preview. Not suitable for production use.
 
-[Unreleased]: https://github.com/TungoAI/tungo-sdk-rust/compare/v0.3.0...HEAD
+[Unreleased]: https://github.com/TungoAI/tungo-sdk-rust/compare/v1.0.0...HEAD
+[1.0.0]: https://github.com/TungoAI/tungo-sdk-rust/compare/v0.3.0...v1.0.0
 [0.3.0]: https://github.com/TungoAI/tungo-sdk-rust/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/TungoAI/tungo-sdk-rust/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/TungoAI/tungo-sdk-rust/releases/tag/v0.1.0

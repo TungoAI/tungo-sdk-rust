@@ -3762,6 +3762,7 @@
           }
         ],
         "errors": [],
+        "files": [],
         "usage": {
           "input_tokens": 1200,
           "output_tokens": 85,
@@ -3820,6 +3821,7 @@
           }
         ],
         "errors": [],
+        "files": [],
         "usage": {
           "input_tokens": 1200,
           "output_tokens": 85,
@@ -3893,6 +3895,7 @@
         "questions": [],
         "citations": [],
         "errors": [],
+        "files": [],
         "stop_reason": "end_turn",
         "followups": [],
         "next_action": {
@@ -3963,6 +3966,7 @@
         "questions": [],
         "citations": [],
         "errors": [],
+        "files": [],
         "stop_reason": "awaiting_user",
         "followups": [],
         "next_action": null
@@ -4009,6 +4013,7 @@
             "limit_kind": "day"
           }
         ],
+        "files": [],
         "stop_reason": "budget",
         "followups": [],
         "next_action": null
@@ -4054,6 +4059,7 @@
         "questions": [],
         "citations": [],
         "errors": [],
+        "files": [],
         "stop_reason": "end_turn",
         "followups": [],
         "next_action": null

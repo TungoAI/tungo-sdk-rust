@@ -21,7 +21,7 @@ const ENDPOINT: &str = r#"{"id":"ep_1","url":"https://example.com/hook","descrip
     "channels":null,"event_types":["proposal.written"],"created_at":"2026-11-09T15:00:00.000Z",
     "updated_at":"2026-11-09T15:00:00.000Z"}"#;
 const STOPPED: &str = r#"{"id":"dlg_1","stopped":true}"#;
-const TURN: &str = r#"{"answer":"НДС — 5 400 ₸.","citations":[],"dialog_id":"dlg_1","errors":[],
+const TURN: &str = r#"{"answer":"НДС — 5 400 ₸.","citations":[],"dialog_id":"dlg_1","errors":[],"files":[],
     "followups":[],"next_action":null,"pending_question":null,"proposals":[],"questions":[],
     "stop_reason":"end_turn","turn_no":1}"#;
 const STATE: &str = r#"{"paused":true,"paused_at":null,"queued":0,"reason":null,"running":0}"#;

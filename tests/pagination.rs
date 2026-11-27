@@ -12,7 +12,7 @@ use tungo_sdk::{Error, StreamExt, TryStreamExt, WaitOptions};
 
 fn dialog(id: &str) -> String {
     format!(
-        r#"{{"id":"{id}","message_count":2,"running":false,"title":"Диалог {id}","title_source":"user","updated_at":"2026-11-09T15:00:00.000Z"}}"#
+        r#"{{"id":"{id}","memory":true,"message_count":2,"running":false,"title":"Диалог {id}","title_source":"user","updated_at":"2026-11-09T15:00:00.000Z"}}"#
     )
 }
 
@@ -389,7 +389,7 @@ async fn batches_are_uploaded_and_awaited() {
 
 #[tokio::test]
 async fn ask_sends_one_message_and_returns_the_turn() {
-    let turn = r#"{"answer":"НДС — 5 400 ₸.","citations":[],"dialog_id":"dlg_1","errors":[],
+    let turn = r#"{"answer":"НДС — 5 400 ₸.","citations":[],"dialog_id":"dlg_1","errors":[],"files":[],
         "followups":[],"next_action":null,"pending_question":null,"proposals":[],"questions":[],
         "stop_reason":"end_turn","turn_no":1}"#;
     let mock = Mock::always(200, turn).await;

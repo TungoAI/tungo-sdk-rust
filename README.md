@@ -38,7 +38,7 @@ Add the crate and a Tokio runtime to `Cargo.toml`:
 
 ```toml
 [dependencies]
-tungo-sdk = "0.3"
+tungo-sdk = "1.0"
 tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
 ```
 
@@ -423,7 +423,7 @@ The programs shown above are in [`examples/`](examples): `config`, `errors`, `mo
 
 ## API reference
 
-Generated from the Tungo Platform API contract: **13 resources, 90 methods, 22 webhook event types**.
+Generated from the Tungo Platform API contract: **15 resources, 100 methods, 22 webhook event types**.
 
 | Resource | Description | Methods |
 | --- | --- | --- |
@@ -432,7 +432,7 @@ Generated from the Tungo Platform API contract: **13 resources, 90 methods, 22 w
 | `client.platform()` | Platform balance, ledger, usage reports, limits, audit log and model rates | `list_usage_rates` · `get_account` · `get_audit / get_audit_all` · `get_ledger / get_ledger_all` · `list_limits` · `list_requests / list_requests_all` · `get_usage` |
 | `client.api_keys()` | The current API key and its usage statistics | `get_current` · `get_current_usage` · `get_usage` |
 | `client.webhooks()` | Outgoing webhooks of an organisation (Svix): endpoints, event catalogue, deliveries and signature check | `list_endpoints / list_endpoints_all` · `create_endpoint` · `get_endpoint` · `update_endpoint` · `delete_endpoint` · `list_endpoint_attempts / list_endpoint_attempts_all` · `rotate_endpoint_secret` · `test_endpoint` · `list_event_types` · `list_messages / list_messages_all` · `list_message_attempts / list_message_attempts_all` · `resend_message` · `get_usage` |
-| `client.chat()` | Conversations with the AI accountant: questions, streaming chat (SSE), token counting and history | `list / list_all` · `create / create_stream` · `count_tokens` · `list_mentions` · `get_rating_options` · `list_suggestions` · `get` · `update` · `delete` · `answer / answer_stream` · `list_events` · `rate_message` · `delete_message_rating` · `rate` · `dismiss_rating` · `stop` |
+| `client.chat()` | Conversations with the AI accountant: questions, streaming chat (SSE), token counting and history | `list / list_all` · `create / create_stream` · `count_tokens` · `list_files / list_files_all` · `list_mentions` · `get_rating_options` · `list_suggestions` · `create_upload` · `delete_upload` · `put_upload_part` · `get` · `update` · `delete` · `answer / answer_stream` · `list_events` · `rate_message` · `delete_message_rating` · `rate` · `dismiss_rating` · `stop` · `translate_thinking` |
 | `client.proposals()` | Documents proposed by the AI accountant: review, approval for posting to 1C, and rejection | `list / list_all` · `approve_batch` · `get` · `approve` · `reject` · `request_approval` |
 | `client.feed()` | The company's feed of events and proposals (pages and a live SSE stream) | `get / get_all` · `list_events` |
 | `client.batches()` | Processing batches for bank statements, incoming e-invoices and DirectBank | `list / list_all` · `create_bank_statement` · `create_esf_purchases` · `get` · `list_events` · `stop` · `get_summary` · `list_statements / list_statements_all` · `poll_directbank` |
@@ -440,6 +440,8 @@ Generated from the Tungo Platform API contract: **13 resources, 90 methods, 22 w
 | `client.forms()` | Tax forms (FNO 100.00 and others): building, ISNA checks and data gaps | `list` · `build` · `list_data_gaps` · `get_isna` · `list_notes` |
 | `client.onec()` | Status of the company's connection to its 1C database | `get_status` |
 | `client.automations()` | Company automations: incoming hooks, scenarios, step chains, runs and the AI autonomy level | `post_hook` · `list_hooks` · `create_hook` · `get_hook` · `update_hook` · `delete_hook` · `rotate_hook` · `test_hook` · `list_runs / list_runs_all` · `get_run` · `cancel_run` · `retry_run` · `list_scenarios` · `create_scenario` · `get_scenario` · `put_scenario` · `update_scenario` · `delete_scenario` · `run_scenario` · `get_state` · `put_state` · `get_autonomy` · `put_autonomy` |
+| `client.verification()` | Public verification of the electronic signature of Tungo documents: by code, by file, by QR block, and the signing keys (no API key needed) | `list_keys` · `verify_qr` · `get` · `check` |
+| `client.releases()` | Public list of downloads: the 1C extension and Tungo Connector (no API key needed) | `list` |
 
 ## Other SDKs
 
@@ -460,7 +462,7 @@ The same API is available in ten languages. All SDKs are generated from one cont
 
 ## Versioning and support
 
-This library follows [Semantic Versioning](https://semver.org/). While the major version is 0, a minor release may contain breaking changes; they are always listed in the [changelog](https://github.com/TungoAI/tungo-sdk-rust/blob/main/CHANGELOG.md). This README describes version 0.3.0.
+This library follows [Semantic Versioning](https://semver.org/). Minor and patch releases are backwards compatible: the API grows by additions, and a field or method that is to go away is first marked deprecated and kept for at least six months. Breaking changes come only in a new major version and are listed, with migration notes, in the [changelog](https://github.com/TungoAI/tungo-sdk-rust/blob/main/CHANGELOG.md). This README describes version 1.0.0.
 
 The code is generated: please report problems and ideas in the [issue tracker](https://github.com/TungoAI/tungo-sdk-rust/issues) rather than opening pull requests against generated files. To report a vulnerability, follow the [security policy](https://github.com/TungoAI/tungo-sdk-rust/blob/main/SECURITY.md).
 

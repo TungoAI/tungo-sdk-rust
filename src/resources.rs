@@ -85,6 +85,16 @@ impl Tungo {
     pub fn automations(&self) -> Automations<'_> {
         Automations { client: self }
     }
+
+    /// Публичная проверка электронной подписи документов Tungo: по коду, по файлу, по блоку QR и ключи подписи (без ключа API)
+    pub fn verification(&self) -> Verification<'_> {
+        Verification { client: self }
+    }
+
+    /// Публичный список загрузок: расширение 1С и Tungo Connector (без ключа API)
+    pub fn releases(&self) -> Releases<'_> {
+        Releases { client: self }
+    }
 }
 
 /// Организации (workspace), доступные ключу API
@@ -1394,6 +1404,69 @@ impl ChatListParams {
     }
 }
 
+/// The optional parameters of [`Chat::list_files`].
+///
+/// Start from `Default::default()` (or `new()`) and set what you need with the
+/// methods of the same names, or assign the fields. The struct is
+/// `#[non_exhaustive]`: a parameter added by a later version of the API does
+/// not break your code.
+#[derive(Debug, Clone, Default, PartialEq)]
+#[non_exhaustive]
+pub struct ChatListFilesParams {
+    /// next_cursor прошлой страницы; без него — самые новые файлы. Фильтры — те же, что у первой страницы
+    pub cursor: Option<String>,
+    /// Только из этого разговора
+    pub dialog_id: Option<String>,
+    /// Только этого формата: xlsx, docx, pdf или csv
+    pub format: Option<ListCompanyChatFilesFormat>,
+    /// Сколько на странице: 1–200, по умолчанию 50
+    pub limit: Option<i64>,
+    /// Подстрока имени файла, без учёта регистра
+    pub q: Option<String>,
+}
+
+impl ChatListFilesParams {
+    /// No parameter set: the same as `Default::default()`.
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    /// Sets the `cursor` query parameter.
+    #[must_use]
+    pub fn cursor(mut self, value: impl Into<String>) -> Self {
+        self.cursor = Some(value.into());
+        self
+    }
+
+    /// Sets the `dialog_id` query parameter.
+    #[must_use]
+    pub fn dialog_id(mut self, value: impl Into<String>) -> Self {
+        self.dialog_id = Some(value.into());
+        self
+    }
+
+    /// Sets the `format` query parameter.
+    #[must_use]
+    pub fn format(mut self, value: ListCompanyChatFilesFormat) -> Self {
+        self.format = Some(value);
+        self
+    }
+
+    /// Sets the `limit` query parameter.
+    #[must_use]
+    pub fn limit(mut self, value: i64) -> Self {
+        self.limit = Some(value);
+        self
+    }
+
+    /// Sets the `q` query parameter.
+    #[must_use]
+    pub fn q(mut self, value: impl Into<String>) -> Self {
+        self.q = Some(value.into());
+        self
+    }
+}
+
 /// The optional parameters of [`Chat::list_mentions`].
 ///
 /// Start from `Default::default()` (or `new()`) and set what you need with the
@@ -1646,6 +1719,52 @@ impl Chat<'_> {
         self.client.execute(request).await
     }
 
+    /// Файлы от ИИ в своих разговорах, новые сверху
+    ///
+    /// `GET /v1/companies/{co}/chat/files`
+    ///
+    /// Excel, Word, PDF и CSV, которые ИИ собрал в разговорах компании (событие file). Видно то же, что можно скачать: только файлы своих разговоров — чужие не видны никому, даже владельцу; по ключу API — разговоры самого ключа. Разговор стёрт или истёк срок хранения — его файлов нет. Файл разговора, у которого ещё идёт первый ход, появится, когда ход запишется. Страницы курсором.
+    ///
+    /// Доступ: chat.use.
+    ///
+    /// Доступно по ключу API.
+    ///
+    /// Required permission: `chat.use`.
+    ///
+    /// Returns one page. Use [`Self::list_files_all`] to iterate over every item.
+    pub async fn list_files(self, params: &ChatListFilesParams) -> Result<Page<ChatFileList>> {
+        let request = Self::list_files_request(params)?;
+        self.client.execute_page(request).await
+    }
+
+    /// Файлы от ИИ в своих разговорах, новые сверху
+    ///
+    /// `GET /v1/companies/{co}/chat/files`
+    ///
+    /// Excel, Word, PDF и CSV, которые ИИ собрал в разговорах компании (событие file). Видно то же, что можно скачать: только файлы своих разговоров — чужие не видны никому, даже владельцу; по ключу API — разговоры самого ключа. Разговор стёрт или истёк срок хранения — его файлов нет. Файл разговора, у которого ещё идёт первый ход, появится, когда ход запишется. Страницы курсором.
+    ///
+    /// Доступ: chat.use.
+    ///
+    /// Доступно по ключу API.
+    ///
+    /// Required permission: `chat.use`.
+    ///
+    /// Returns a lazy stream over the items of every page, starting from the given parameters.
+    pub fn list_files_all(self, params: &ChatListFilesParams) -> ItemStream<ChatFileItem> {
+        let request = Self::list_files_request(params);
+        self.client.paginate::<ChatFileList>(request)
+    }
+
+    fn list_files_request(params: &ChatListFilesParams) -> Result<Request> {
+        let mut request = Request::new(Method::GET, "/v1/companies/{co}/chat/files");
+        request.query("cursor", &params.cursor);
+        request.query("dialog_id", &params.dialog_id);
+        request.query("format", &params.format);
+        request.query("limit", &params.limit);
+        request.query("q", &params.q);
+        Ok(request)
+    }
+
     /// Что можно упомянуть через «@»
     ///
     /// `GET /v1/companies/{co}/chat/mentions`
@@ -1705,6 +1824,61 @@ impl Chat<'_> {
     ) -> Result<Response<ChatSuggestions>> {
         let mut request = Request::new(Method::GET, "/v1/companies/{co}/chat/suggestions");
         request.query("lang", &params.lang);
+        self.client.execute(request).await
+    }
+
+    /// Начать загрузку архива к сообщению
+    ///
+    /// `POST /v1/companies/{co}/chat/uploads`
+    ///
+    /// Архив (.zip, .rar, .7z) до 100 МБ одним телом не проходит (предел тела у прокси), поэтому — по частям: начать здесь, прислать части PUT …/parts/{n}, затем отправить сообщение с attachments: \[{ "upload_id": "…" }\]. Ход, принявший архив, удаляет загрузку; брошенная удаляется по сроку. Видит загрузку только тот, кто её начал (человек или ключ), в этой компании; одновременно — до 3 загрузок. Лимит тарифа проверяется сразу (402/429, как у сообщения). error.code: upload_part_invalid (имя не архива, размер), file_too_large, too_many_uploads (429), uploads_unavailable (503).
+    ///
+    /// Доступ: chat.use.
+    ///
+    /// Доступно по ключу API.
+    ///
+    /// Required permission: `chat.use`.
+    pub async fn create_upload(self, body: &ChatUploadCreate) -> Result<Response<ChatUpload>> {
+        let mut request = Request::new(Method::POST, "/v1/companies/{co}/chat/uploads");
+        request.json(body)?;
+        self.client.execute(request).await
+    }
+
+    /// Отменить загрузку архива
+    ///
+    /// `DELETE /v1/companies/{co}/chat/uploads/{upload}`
+    ///
+    /// Части удаляются сразу. Нет такой загрузки (устарела, уже отправлена, чужая) — 404 с error.code = upload_not_found.
+    ///
+    /// Доступ: chat.use.
+    ///
+    /// Доступно по ключу API.
+    ///
+    /// Required permission: `chat.use`.
+    pub async fn delete_upload(self, upload: &str) -> Result<Response<()>> {
+        let mut request = Request::new(Method::DELETE, "/v1/companies/{co}/chat/uploads/{upload}");
+        request.path_param("upload", upload)?;
+        self.client.execute_empty(request).await
+    }
+
+    /// Часть архива
+    ///
+    /// `PUT /v1/companies/{co}/chat/uploads/{upload}/parts/{n}`
+    ///
+    /// Тело — сырые байты части (Content-Type: application/octet-stream), ровно part_bytes (8388608), у последней — остаток. Части — в любом порядке и параллельно; повтор той же части заменяет её. error.code: upload_part_invalid (номер или размер), payload_too_large, upload_not_found (404: устарела, отменена, чужая).
+    ///
+    /// Доступ: chat.use.
+    ///
+    /// Доступно по ключу API.
+    ///
+    /// Required permission: `chat.use`.
+    pub async fn put_upload_part(self, upload: &str, n: &str) -> Result<Response<ChatUploadPart>> {
+        let mut request = Request::new(
+            Method::PUT,
+            "/v1/companies/{co}/chat/uploads/{upload}/parts/{n}",
+        );
+        request.path_param("upload", upload)?;
+        request.path_param("n", n)?;
         self.client.execute(request).await
     }
 
@@ -1951,6 +2125,31 @@ impl Chat<'_> {
         request.path_param("id", id)?;
         self.client.execute(request).await
     }
+
+    /// Перевести размышление на русский
+    ///
+    /// `POST /v1/companies/{co}/chat/{id}/thinking/{tid}/translate`
+    ///
+    /// Модель часто рассуждает по-английски. Блок не по-русски приходит оригиналом с translate_id (событие thinking и thinking_parts истории); перевод — этим запросом, когда человек раскрыл шаги ответа. Перевод — вызов модели за счёт того же человека и с теми же лимитами, что ход (402/429 — как у POST …/chat); переведённый блок запоминается в разговоре — повторный запрос бесплатен (cached: true). Блок идущего хода в разговор ещё не записан — 404, повторить после ответа; перевод не получился — 503, повторить позже. Только свой разговор, как GET …/chat/{id}.
+    ///
+    /// Доступ: chat.use.
+    ///
+    /// Доступно по ключу API.
+    ///
+    /// Required permission: `chat.use`.
+    pub async fn translate_thinking(
+        self,
+        id: &str,
+        tid: &str,
+    ) -> Result<Response<ChatThinkingTranslation>> {
+        let mut request = Request::new(
+            Method::POST,
+            "/v1/companies/{co}/chat/{id}/thinking/{tid}/translate",
+        );
+        request.path_param("id", id)?;
+        request.path_param("tid", tid)?;
+        self.client.execute(request).await
+    }
 }
 
 /// The optional parameters of [`Proposals::list`].
@@ -2072,7 +2271,7 @@ impl Proposals<'_> {
     ///
     /// `GET /v1/companies/{co}/proposals`
     ///
-    /// Свежие сверху; страницы курсором (номер последнего предложения страницы).
+    /// Свежие сверху; страницы курсором (номер последнего предложения страницы). Компания без подключения к 1С — пустая страница (200), не 409: предложений у неё быть не может.
     ///
     /// Доступ: company.read.
     ///
@@ -2090,7 +2289,7 @@ impl Proposals<'_> {
     ///
     /// `GET /v1/companies/{co}/proposals`
     ///
-    /// Свежие сверху; страницы курсором (номер последнего предложения страницы).
+    /// Свежие сверху; страницы курсором (номер последнего предложения страницы). Компания без подключения к 1С — пустая страница (200), не 409: предложений у неё быть не может.
     ///
     /// Доступ: company.read.
     ///
@@ -3343,6 +3542,8 @@ impl Automations<'_> {
     ///
     /// `DELETE /v1/companies/{co}/automations/hooks/{id}`
     ///
+    /// Сценарии этого хука не удаляются: они остаются с trigger.hook_id = null и не запускаются событиями, пока им не назначат другой хук (PUT …/scenarios/{id}).
+    ///
     /// Доступ: automations.manage | company.manage.
     ///
     /// Доступно по ключу API.
@@ -3728,6 +3929,101 @@ impl Automations<'_> {
     ) -> Result<Response<CompanyAutonomy>> {
         let mut request = Request::new(Method::PUT, "/v1/companies/{co}/autonomy");
         request.json(body)?;
+        self.client.execute(request).await
+    }
+}
+
+/// Публичная проверка электронной подписи документов Tungo: по коду, по файлу, по блоку QR и ключи подписи (без ключа API)
+#[derive(Debug, Clone, Copy)]
+pub struct Verification<'a> {
+    client: &'a Tungo,
+}
+
+impl Verification<'_> {
+    /// Ключи подписи QR (JWKS)
+    ///
+    /// `GET /v1/public/verify-keys`
+    ///
+    /// Открытые ключи, которыми Tungo подписывает QR на документах (ES256, P-256); тот же ответ — /.well-known/tungo-verify-keys.json. Без входа и без предела частоты: ответ один для всех, держать в кэше 5 минут (Cache-Control: public, max-age=300).
+    ///
+    /// Открыто всем: сессия и ключ API не нужны.
+    ///
+    /// This operation is public: the API key is not sent.
+    pub async fn list_keys(self) -> Result<Response<VerifyKeys>> {
+        let mut request = Request::new(Method::GET, "/v1/public/verify-keys");
+        request.auth(Auth::None);
+        self.client.execute(request).await
+    }
+
+    /// Проверить подписанный блок QR
+    ///
+    /// `POST /v1/public/verify/qr`
+    ///
+    /// В ссылке QR после # — подписанный блок «k1.\<base64url(COSE_Sign1 ES256)\>»: браузер не отправляет его серверу сам, страница присылает его сюда. Подпись блока проверяет служба карточек ключом из /.well-known/tungo-verify-keys.json (kid из заголовка COSE). valid: true — QR выпущен Tungo и не изменён; claims — утверждения QR (документ, хэши, время выпуска, число подписей), как их разобрала служба. Без входа; запросов с одного IP — не больше auth.rate_limits.verify_check_per_ip, дальше 429.
+    ///
+    /// Открыто всем: сессия и ключ API не нужны.
+    ///
+    /// This operation is public: the API key is not sent.
+    pub async fn verify_qr(self, body: &VerifyQrInput) -> Result<Response<VerifyQrResult>> {
+        let mut request = Request::new(Method::POST, "/v1/public/verify/qr");
+        request.json(body)?;
+        request.auth(Auth::None);
+        self.client.execute(request).await
+    }
+
+    /// Проверка подписи документа по коду
+    ///
+    /// `GET /v1/public/verify/{code}`
+    ///
+    /// То, что показывает страница /v/{code} (ссылка из QR на документе): вид, номер, дата и статус документа, продавец, контрагент маской и подписи — подписант, ИИН/БИН, время по метке НУЦ, сертификат, ответ OCSP и итог проверки. Подписи проверяет служба документов (d-…) или партнёров (p-…). Нет такого кода — 404 verify_not_found; служба не отвечает — 503 verify_unavailable. Ответ не кэшировать. Без входа; запросов с одного IP — не больше auth.rate_limits.verify_per_ip, дальше 429.
+    ///
+    /// Открыто всем: сессия и ключ API не нужны.
+    ///
+    /// This operation is public: the API key is not sent.
+    pub async fn get(self, code: &str) -> Result<Response<PublicVerification>> {
+        let mut request = Request::new(Method::GET, "/v1/public/verify/{code}");
+        request.path_param("code", code)?;
+        request.auth(Auth::None);
+        self.client.execute(request).await
+    }
+
+    /// Сверить файл с подписанным
+    ///
+    /// `POST /v1/public/verify/{code}/check`
+    ///
+    /// Тот ли это файл: SHA-256 PDF считает браузер (страница /v/{code}), сам файл не покидает устройство — сюда идёт только хэш. match: true — файл байт в байт тот, что подписан. Без входа; запросов с одного IP — не больше auth.rate_limits.verify_check_per_ip, дальше 429.
+    ///
+    /// Открыто всем: сессия и ключ API не нужны.
+    ///
+    /// This operation is public: the API key is not sent.
+    pub async fn check(self, code: &str, body: &VerifyCheckInput) -> Result<Response<VerifyCheck>> {
+        let mut request = Request::new(Method::POST, "/v1/public/verify/{code}/check");
+        request.path_param("code", code)?;
+        request.json(body)?;
+        request.auth(Auth::None);
+        self.client.execute(request).await
+    }
+}
+
+/// Публичный список загрузок: расширение 1С и Tungo Connector (без ключа API)
+#[derive(Debug, Clone, Copy)]
+pub struct Releases<'a> {
+    client: &'a Tungo,
+}
+
+impl Releases<'_> {
+    /// Что скачать
+    ///
+    /// `GET /v1/public/downloads`
+    ///
+    /// Последние выпуски расширения Tungo для 1С и Tungo Connector — для «Скачать» в кабинете и на tungo.kz/download. Ядро раз в 10 минут читает публичный TungoAI/tungo-releases; новый выпуск появляется здесь сам. Держать в кэше 5 минут (Cache-Control: public, max-age=300).
+    ///
+    /// Открыто всем: сессия и ключ API не нужны. Ответ одинаков для всех, CORS открыт (Access-Control-Allow-Origin: *).
+    ///
+    /// This operation is public: the API key is not sent.
+    pub async fn list(self) -> Result<Response<Downloads>> {
+        let mut request = Request::new(Method::GET, "/v1/public/downloads");
+        request.auth(Auth::None);
         self.client.execute(request).await
     }
 }

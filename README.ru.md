@@ -38,7 +38,7 @@
 
 ```toml
 [dependencies]
-tungo-sdk = "0.3"
+tungo-sdk = "1.0"
 tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
 ```
 
@@ -372,7 +372,7 @@ fn main() -> Result<(), tungo_sdk::MoneyError> {
 
 ## Справочник API
 
-Создано из контракта API платформы Tungo: **ресурсов — 13, методов — 90, типов событий вебхуков — 22**.
+Создано из контракта API платформы Tungo: **ресурсов — 15, методов — 100, типов событий вебхуков — 22**.
 
 | Ресурс | Описание | Методы |
 | --- | --- | --- |
@@ -381,7 +381,7 @@ fn main() -> Result<(), tungo_sdk::MoneyError> {
 | `client.platform()` | Баланс платформы, книга движений, отчёты о расходе, лимиты, аудит и тарифы моделей | `list_usage_rates` · `get_account` · `get_audit / get_audit_all` · `get_ledger / get_ledger_all` · `list_limits` · `list_requests / list_requests_all` · `get_usage` |
 | `client.api_keys()` | Сведения о текущем ключе API и статистика его расхода | `get_current` · `get_current_usage` · `get_usage` |
 | `client.webhooks()` | Исходящие вебхуки организации (Svix): адреса, каталог событий, доставки и проверка подписи | `list_endpoints / list_endpoints_all` · `create_endpoint` · `get_endpoint` · `update_endpoint` · `delete_endpoint` · `list_endpoint_attempts / list_endpoint_attempts_all` · `rotate_endpoint_secret` · `test_endpoint` · `list_event_types` · `list_messages / list_messages_all` · `list_message_attempts / list_message_attempts_all` · `resend_message` · `get_usage` |
-| `client.chat()` | Диалоги с ИИ-бухгалтером: вопросы, потоковый чат (SSE), подсчёт токенов и история | `list / list_all` · `create / create_stream` · `count_tokens` · `list_mentions` · `get_rating_options` · `list_suggestions` · `get` · `update` · `delete` · `answer / answer_stream` · `list_events` · `rate_message` · `delete_message_rating` · `rate` · `dismiss_rating` · `stop` |
+| `client.chat()` | Диалоги с ИИ-бухгалтером: вопросы, потоковый чат (SSE), подсчёт токенов и история | `list / list_all` · `create / create_stream` · `count_tokens` · `list_files / list_files_all` · `list_mentions` · `get_rating_options` · `list_suggestions` · `create_upload` · `delete_upload` · `put_upload_part` · `get` · `update` · `delete` · `answer / answer_stream` · `list_events` · `rate_message` · `delete_message_rating` · `rate` · `dismiss_rating` · `stop` · `translate_thinking` |
 | `client.proposals()` | Предложения документов ИИ-бухгалтера: просмотр, одобрение записи в 1С и отклонение | `list / list_all` · `approve_batch` · `get` · `approve` · `reject` · `request_approval` |
 | `client.feed()` | Лента событий и предложений компании (страницы и живой поток SSE) | `get / get_all` · `list_events` |
 | `client.batches()` | Пачки обработки банковских выписок, входящих ЭСФ и DirectBank | `list / list_all` · `create_bank_statement` · `create_esf_purchases` · `get` · `list_events` · `stop` · `get_summary` · `list_statements / list_statements_all` · `poll_directbank` |
@@ -389,6 +389,8 @@ fn main() -> Result<(), tungo_sdk::MoneyError> {
 | `client.forms()` | Налоговые формы (ФНО 100.00 и др.): сборка, проверка ИСНА и разрывы данных | `list` · `build` · `list_data_gaps` · `get_isna` · `list_notes` |
 | `client.onec()` | Состояние подключения компании к базе 1С | `get_status` |
 | `client.automations()` | Автоматизации компании: входящие хуки, сценарии, цепочки шагов, запуски и уровень автономности ИИ | `post_hook` · `list_hooks` · `create_hook` · `get_hook` · `update_hook` · `delete_hook` · `rotate_hook` · `test_hook` · `list_runs / list_runs_all` · `get_run` · `cancel_run` · `retry_run` · `list_scenarios` · `create_scenario` · `get_scenario` · `put_scenario` · `update_scenario` · `delete_scenario` · `run_scenario` · `get_state` · `put_state` · `get_autonomy` · `put_autonomy` |
+| `client.verification()` | Публичная проверка электронной подписи документов Tungo: по коду, по файлу, по блоку QR и ключи подписи (без ключа API) | `list_keys` · `verify_qr` · `get` · `check` |
+| `client.releases()` | Публичный список загрузок: расширение 1С и Tungo Connector (без ключа API) | `list` |
 
 ## Другие SDK
 
@@ -409,7 +411,7 @@ fn main() -> Result<(), tungo_sdk::MoneyError> {
 
 ## Версии и поддержка
 
-Библиотека следует [семантическому версионированию](https://semver.org/lang/ru/). Пока старшая версия равна 0, промежуточный выпуск может содержать несовместимые изменения; они всегда перечислены в [истории изменений](https://github.com/TungoAI/tungo-sdk-rust/blob/main/CHANGELOG.md). Этот README описывает версию 0.3.0.
+Библиотека следует [семантическому версионированию](https://semver.org/lang/ru/). Промежуточные и исправляющие выпуски совместимы: API растёт добавлениями, а поле или метод, которые уйдут, сначала помечаются устаревшими и живут не меньше шести месяцев. Несовместимые изменения бывают только в новой старшей версии и перечислены, с указаниями по переходу, в [истории изменений](https://github.com/TungoAI/tungo-sdk-rust/blob/main/CHANGELOG.md). Этот README описывает версию 1.0.0.
 
 Код создаётся генератором: пишите о проблемах и идеях в [обращения](https://github.com/TungoAI/tungo-sdk-rust/issues), а не присылайте правки к созданным файлам. Об уязвимости сообщайте по [политике безопасности](https://github.com/TungoAI/tungo-sdk-rust/blob/main/SECURITY.md).
 
